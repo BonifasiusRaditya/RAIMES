@@ -1,4 +1,4 @@
-CREATE TABLE "User" (
+CREATE TABLE "User" IF NOT EXISTS (
     userID SERIAL PRIMARY KEY,
     username VARCHAR(100) UNIQUE NOT    NULL,
     password VARCHAR(255) NOT NULL,
@@ -6,7 +6,7 @@ CREATE TABLE "User" (
     role VARCHAR(50) NOT NULL
 );
 
-CREATE TABLE Company (
+CREATE TABLE Company IF NOT EXISTS (
     companyID SERIAL PRIMARY KEY,
     companyName VARCHAR(255) NOT NULL,
     address TEXT,
@@ -14,7 +14,7 @@ CREATE TABLE Company (
     userID INT REFERENCES "User"(userID)
 );
 
-CREATE TABLE Questionnaire (
+CREATE TABLE Questionnaire IF NOT EXISTS(
     questionnaireID SERIAL PRIMARY KEY,
     title VARCHAR(255) NOT NULL,
     version VARCHAR(50),
@@ -22,7 +22,7 @@ CREATE TABLE Questionnaire (
     standard VARCHAR(100)
 );
 
-CREATE TABLE Question (
+CREATE TABLE Question IF NOT EXISTS(
     questionID SERIAL PRIMARY KEY,
     questionnaireID INT NOT NULL REFERENCES Questionnaire(questionnaireID),
     text TEXT NOT NULL,
@@ -31,7 +31,7 @@ CREATE TABLE Question (
     category VARCHAR(100)
 );
 
-CREATE TABLE Assessment (
+CREATE TABLE Assessment IF NOT EXISTS(
     assessmentID SERIAL PRIMARY KEY,
     companyID INT NOT NULL REFERENCES Company(companyID),
     questionnaireID INT NOT NULL REFERENCES Questionnaire(questionnaireID),
@@ -41,7 +41,7 @@ CREATE TABLE Assessment (
     completionDate TIMESTAMP WITHOUT TIME ZONE
 );
 
-CREATE TABLE Answer (
+CREATE TABLE Answer IF NOT EXISTS(
     answerID SERIAL PRIMARY KEY,
     assessmentID INT NOT NULL REFERENCES Assessment(assessmentID),
     questionID INT NOT NULL REFERENCES Question(questionID),
@@ -49,7 +49,7 @@ CREATE TABLE Answer (
     UNIQUE (assessmentID, questionID)
 );
 
-CREATE TABLE Evidence (
+CREATE TABLE Evidence IF NOT EXISTS(
     evidenceID SERIAL PRIMARY KEY,
     answerID INT NOT NULL REFERENCES Answer(answerID),
     fileName VARCHAR(255) NOT NULL,
@@ -59,7 +59,7 @@ CREATE TABLE Evidence (
     storagePath VARCHAR(500) NOT NULL
 );
 
-CREATE TABLE Report (
+CREATE TABLE Report IF NOT EXISTS(
     reportID SERIAL PRIMARY KEY,
     assessmentID INT NOT NULL REFERENCES Assessment(assessmentID),
     generatedDate TIMESTAMP WITHOUT TIME ZONE DEFAULT NOW(),
