@@ -1,0 +1,94 @@
+### Test Backend RAIMES API
+
+# 1. Register User Baru
+POST http://localhost:3000/api/auth/register
+Content-Type: application/json
+
+{
+  "username": "testuser",
+  "password": "password123",
+  "email": "testuser@example.com",
+  "role": "user"
+}
+
+###
+
+# 2. Login
+POST http://localhost:3000/api/auth/login
+Content-Type: application/json
+
+{
+  "username": "testuser",
+  "password": "password123"
+}
+
+###
+
+# 3. Get Current User (Ganti <TOKEN> dengan token dari response login)
+GET http://localhost:3000/api/auth/me
+Authorization: Bearer <TOKEN>
+
+###
+
+# 4. Logout
+POST http://localhost:3000/api/auth/logout
+
+###
+
+# 5. Health Check
+GET http://localhost:3000/
+
+###
+
+# 6. Status Check
+GET http://localhost:3000/api/status
+
+###
+
+# Test dengan Admin Role
+POST http://localhost:3000/api/auth/register
+Content-Type: application/json
+
+{
+  "username": "admin",
+  "password": "admin123",
+  "email": "admin@raimes.com",
+  "role": "admin"
+}
+
+###
+
+# Test dengan Auditor Role
+POST http://localhost:3000/api/auth/register
+Content-Type: application/json
+
+{
+  "username": "auditor1",
+  "password": "auditor123",
+  "email": "auditor@raimes.com",
+  "role": "auditor"
+}
+
+###
+
+# Login dengan credentials yang salah (harus gagal)
+POST http://localhost:3000/api/auth/login
+Content-Type: application/json
+
+{
+  "username": "testuser",
+  "password": "wrongpassword"
+}
+
+###
+
+# Register dengan username yang sudah ada (harus gagal)
+POST http://localhost:3000/api/auth/register
+Content-Type: application/json
+
+{
+  "username": "testuser",
+  "password": "password123",
+  "email": "another@example.com",
+  "role": "user"
+}
