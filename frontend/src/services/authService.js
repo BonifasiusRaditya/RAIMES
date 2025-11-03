@@ -18,7 +18,11 @@ const authService = {
             
             throw new Error(response.data.message || 'Login failed');
         } catch (error) {
-            throw error;
+            // Extract error message from API response
+            const errorMessage = error.response?.data?.message 
+                || error.message 
+                || 'Network error. Please check your connection.';
+            throw errorMessage;
         }
     },
 
