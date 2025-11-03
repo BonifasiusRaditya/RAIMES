@@ -3,44 +3,6 @@ import warningIcon from '../assets/warning-icon.png';
 import bellIcon from '../assets/bell-icon.png';
 
 function Dashboard() {
-  const companies = [
-    {
-      no: 1,
-      name: 'PT Tambang Sejahtera',
-      progress: 100,
-      status: 'Belum dinilai',
-      aiScore: 82,
-      action: 'Nilai Sekarang',
-      actionStyle: 'yellow'
-    },
-    {
-      no: 2,
-      name: 'PT Batu Energi',
-      progress: 100,
-      status: 'Sudah dinilai',
-      aiScore: 90,
-      action: 'Lihat Detail',
-      actionStyle: 'yellow-outline'
-    },
-    {
-      no: 3,
-      name: 'PT Mineral Nusantara',
-      progress: 75,
-      status: 'Dalam proses',
-      aiScore: '-',
-      action: 'Menunggu',
-      actionStyle: 'gray'
-    },
-    {
-      no: 4,
-      name: 'PT Adhi Sukma',
-      progress: 50,
-      status: 'Dalam proses',
-      aiScore: '-',
-      action: 'Menunggu',
-      actionStyle: 'gray'
-    }
-  ];
 
   return (
     <div className="min-h-screen bg-gray-100">
