@@ -1,5 +1,6 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { useState } from 'react';
+import { motion } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
 import logoFull from '../assets/logo-full.png';
 
@@ -14,41 +15,35 @@ export default function Navbar() {
   };
 
   return (
-    <nav className="bg-raimes-purple px-8 py-4">
+    <motion.nav
+      className="bg-raimes-purple px-8 py-4"
+      initial={{ opacity: 0, y: -12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4 }}
+    >
       <div className="flex items-center justify-between">
         <div className="flex items-center">
-          <img
+          <motion.img
             src={logoFull}
             alt="Responsible AI Mining Evaluation System"
             className="h-12"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.1, duration: 0.4 }}
           />
         </div>
 
         <div className="flex items-center gap-12">
-          <Link
-            to="/dashboard"
-            className="text-white font-semibold hover:text-raimes-yellow transition-colors"
-          >
-            Dashboard
-          </Link>
-          <Link
-            to="/assessment-results"
-            className="text-white font-semibold hover:text-raimes-yellow transition-colors"
-          >
-            Assessment Results
-          </Link>
-          <Link
-            to="/data-validation"
-            className="text-white font-semibold hover:text-raimes-yellow transition-colors"
-          >
-            Data Validation
-          </Link>
-          <Link
-            to="/final-report"
-            className="text-white font-semibold hover:text-raimes-yellow transition-colors"
-          >
-            Final Report
-          </Link>
+          {[['/dashboard','Dashboard'],['/assessment-results','Assessment Results'],['/data-validation','Data Validation'],['/final-report','Final Report']].map(([to, label]) => (
+            <motion.div key={to} whileHover={{ y: -2 }} whileTap={{ scale: 0.98 }}>
+              <Link
+                to={to}
+                className="text-white font-semibold hover:text-raimes-yellow transition-colors"
+              >
+                {label}
+              </Link>
+            </motion.div>
+          ))}
         </div>
 
         <div className="flex items-center gap-4">
@@ -58,7 +53,7 @@ export default function Navbar() {
               onClick={() => setShowDropdown(!showDropdown)}
               className="flex items-center gap-3 hover:opacity-90 transition-opacity"
             >
-              <div className="w-12 h-12 rounded-full bg-gray-400 flex items-center justify-center overflow-hidden">
+              <motion.div className="w-12 h-12 rounded-full bg-gray-400 flex items-center justify-center overflow-hidden" whileHover={{ scale: 1.03 }}>
                 <svg
                   className="w-12 h-12 text-gray-600"
                   fill="currentColor"
@@ -70,7 +65,7 @@ export default function Navbar() {
                     clipRule="evenodd"
                   />
                 </svg>
-              </div>
+              </motion.div>
               <div className="flex flex-col items-start">
                 <span className="text-raimes-yellow font-semibold">
                   Hello, {user?.username || 'User'}
@@ -90,7 +85,12 @@ export default function Navbar() {
             </button>
 
             {showDropdown && (
-              <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg py-2 z-50">
+              <motion.div
+                className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg py-2 z-50"
+                initial={{ opacity: 0, y: -8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.2 }}
+              >
                 <div className="px-4 py-2 border-b border-gray-200">
                   <p className="text-sm font-semibold text-raimes-purple">{user?.username}</p>
                   <p className="text-xs text-gray-600">{user?.email}</p>
@@ -109,11 +109,11 @@ export default function Navbar() {
                   </svg>
                   Logout
                 </button>
-              </div>
+              </motion.div>
             )}
           </div>
         </div>
       </div>
-    </nav>
+    </motion.nav>
   );
 }
