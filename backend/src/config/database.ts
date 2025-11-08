@@ -19,7 +19,7 @@ if (connectionString) {
         idleTimeoutMillis: 30000,
         connectionTimeoutMillis: 10000,
     });
-    console.log('📌 Using DATABASE_URL connection string');
+    console.log('Using DATABASE_URL connection string');
 } else {
     // Use individual parameters
     const isSupabase = process.env.DB_HOST?.includes('supabase.co');

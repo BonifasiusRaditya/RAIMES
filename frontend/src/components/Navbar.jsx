@@ -41,7 +41,7 @@ export default function Navbar() {
             to="/data-validation"
             className="text-white font-semibold hover:text-raimes-yellow transition-colors"
           >
-            Data Validation
+            Check Data Validation
           </Link>
           <Link
             to="/final-report"

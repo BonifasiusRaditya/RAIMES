@@ -287,26 +287,6 @@ function RegisterPage() {
               )}
             </div>
 
-            <div className="mb-6">
-              <label
-                htmlFor="role"
-                className="block text-raimes-purple font-semibold mb-2"
-              >
-                Account Type
-              </label>
-              <select
-                id="role"
-                value={role}
-                onChange={(e) => setRole(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-raimes-purple focus:border-transparent"
-                disabled={loading}
-              >
-                <option value="user">Company User</option>
-                <option value="auditor">Auditor</option>
-                <option value="admin">Administrator</option>
-              </select>
-            </div>
-
             <button
               type="submit"
               disabled={loading || passwordErrors.length || passwordErrors.match}
