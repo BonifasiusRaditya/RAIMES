@@ -12,6 +12,7 @@ const QuestionnairePage = lazy(() => import("./pages/QuestionnairePage"));
 const AssessmentResults = lazy(() => import("./pages/AssessmentResults"));
 const DataValidation = lazy(() => import("./pages/DataValidation"));
 const LandingPage = lazy(() => import("./pages/LandingPage"));
+const EditQuestionnaire = lazy(() => import("./pages/EditQuestionnaire"));
 import { useAuth } from "./context/AuthContext";
 
 // Loading component
@@ -36,12 +37,7 @@ const RootIndex = () => {
 function App() {
   return (
     <AuthProvider>
-      <div
-        className="w-full bg-cover bg-center bg-fixed bg-no-repeat min-h-screen"
-        style={{
-          backgroundImage: `url('/MiningSite_BackgroundPicture.svg')`,
-        }}
-      >
+      <div className="w-full bg-cover bg-center bg-fixed bg-no-repeat min-h-screen" style={{backgroundColor: '#F6F6FF'}}>
         <BrowserRouter>
           <Suspense fallback={<LoadingSpinner />}>
             <Routes>
@@ -54,6 +50,14 @@ function App() {
                 element={
                   <ProtectedRoute>
                     <Dashboard />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/edit-questionnaire"
+                element={
+                  <ProtectedRoute>
+                    <EditQuestionnaire />
                   </ProtectedRoute>
                 }
               />

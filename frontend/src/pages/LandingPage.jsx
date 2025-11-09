@@ -79,7 +79,7 @@ export default function LandingPage() {
       <section
         className="px-8 py-12 bg-cover bg-center bg-no-repeat relative"
         style={{
-          backgroundImage: `url('/MiningSite_BackgroundPictureNoBlur.svg')`,
+          backgroundColor: '#F6F6FF',
         }}
       >
         <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-10 items-center">
@@ -97,7 +97,7 @@ export default function LandingPage() {
             </motion.div>
             <motion.h1
               variants={fadeInUp}
-              className="mt-4 text-5xl font-extrabold text-white leading-tight drop-shadow-lg"
+              className="mt-4 text-5xl font-extrabold text-black leading-tight drop-shadow-lg"
             >
               Transform Mining into{" "}
               <span className="text-raimes-yellow">Sustainable</span> Future
@@ -162,7 +162,7 @@ export default function LandingPage() {
                 >
                   <div className="flex items-center gap-2 mb-2">
                     <Icon className={`${color} w-5 h-5`} />
-                    <div className="text-sm text-white font-medium">
+                    <div className="text-sm text-black font-medium">
                       {label}
                     </div>
                   </div>
@@ -195,7 +195,7 @@ export default function LandingPage() {
               <div className="text-4xl font-extrabold text-raimes-yellow drop-shadow-md">
                 {num}
               </div>
-              <div className="text-white font-medium">{label}</div>
+              <div className="text-black font-medium">{label}</div>
             </motion.div>
           ))}
         </motion.div>
@@ -206,13 +206,13 @@ export default function LandingPage() {
         id="features"
         className="px-8 py-12 bg-cover bg-center bg-no-repeat"
         style={{
-          backgroundImage: `url('/MiningSite_BackgroundPictureNoBlur.svg')`,
+          backgroundColor: '#F6F6FF',
         }}
       >
         <div className="max-w-6xl mx_auto"></div>
         <div className="max-w-6xl mx-auto">
           <motion.h2
-            className="text-3xl font-bold text-white text-center drop-shadow-lg"
+            className="text-3xl font-bold text-black text-center drop-shadow-lg"
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true, amount: 0.3 }}
@@ -222,7 +222,7 @@ export default function LandingPage() {
             <span className="text-raimes-yellow">Sustainable Mining</span>
           </motion.h2>
           <motion.p
-            className="text-center text-white mt-2 drop-shadow-md font-medium"
+            className="text-center text-black mt-2 drop-shadow-md font-medium"
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true, amount: 0.3 }}
@@ -280,7 +280,7 @@ export default function LandingPage() {
                 <h3 className="text-lg font-semibold text-raimes-yellow drop-shadow-sm">
                   {title}
                 </h3>
-                <p className="text-white mt-2 font-medium">{desc}</p>
+                <p className="text-black mt-2 font-medium">{desc}</p>
               </motion.div>
             ))}
           </motion.div>
@@ -301,11 +301,11 @@ export default function LandingPage() {
           >
             <motion.h2
               variants={fadeInUp}
-              className="text-3xl font-bold text-white drop-shadow-md"
+              className="text-3xl font-bold text-black drop-shadow-md"
             >
               Why Choose <span className="text-raimes-yellow">RAIMES</span>?
             </motion.h2>
-            <motion.ul className="mt-4 space-y-3 text-white font-medium">
+            <motion.ul className="mt-4 space-y-3 text-black font-medium">
               {[
                 "Continuous Monitoring — get real-time insights 24/7",
                 "Transparent Methodology — standardized framework",
@@ -325,7 +325,7 @@ export default function LandingPage() {
             viewport={{ once: true, amount: 0.2 }}
             variants={scaleIn}
           >
-            <h3 className="text-white font-semibold drop-shadow-sm">
+            <h3 className="text-black font-semibold drop-shadow-sm">
               For Stakeholders
             </h3>
             <motion.div
@@ -343,7 +343,7 @@ export default function LandingPage() {
                   <div className="text-raimes-yellow font-semibold drop-shadow-sm">
                     {s}
                   </div>
-                  <div className="text-white text-sm mt-1">
+                  <div className="text-black text-sm mt-1">
                     Benchmark, monitor compliance, and verify claims with data.
                   </div>
                 </motion.div>

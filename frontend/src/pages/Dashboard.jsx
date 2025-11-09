@@ -2,12 +2,61 @@ import Navbar from "../components/Navbar";
 import warningIcon from "../assets/warning-icon.png";
 import bellIcon from "../assets/bell-icon.png";
 
+// Data dummy untuk companies
+const companies = [
+  {
+    no: 1,
+    name: "PT Tambang Emas Nusantara",
+    progress: 85,
+    status: "In Progress",
+    aiScore: "8.5",
+    action: "Review",
+    actionStyle: "yellow"
+  },
+  {
+    no: 2,
+    name: "CV Mineral Indonesia",
+    progress: 100,
+    status: "Completed",
+    aiScore: "9.2",
+    action: "Approved",
+    actionStyle: "yellow-outline"
+  },
+  {
+    no: 3,
+    name: "PT Batubara Kalimantan",
+    progress: 45,
+    status: "In Progress",
+    aiScore: "6.8",
+    action: "Pending",
+    actionStyle: "gray"
+  },
+  {
+    no: 4,
+    name: "PT Nikel Sulawesi",
+    progress: 90,
+    status: "Review",
+    aiScore: "8.9",
+    action: "Review",
+    actionStyle: "yellow"
+  },
+  {
+    no: 5,
+    name: "CV Pasir Besi Jawa",
+    progress: 100,
+    status: "Completed",
+    aiScore: "9.5",
+    action: "Approved",
+    actionStyle: "yellow-outline"
+  }
+];
+
 function Dashboard() {
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen bg-gray-50">
       <Navbar />
 
-      <main className="px-8 py-8 bg-white bg-opacity-75">
+      <main className="px-8 py-8">
         <h1 className="text-4xl font-bold text-raimes-purple mb-8">
           Dashboard
         </h1>
@@ -32,7 +81,9 @@ function Dashboard() {
 
           <div className="bg-white rounded-2xl p-8 shadow flex items-center justify-center gap-6">
             <div className="flex flex-col items-center">
-              <img src={warningIcon} alt="Warning Icon" className="h-20" />
+              <div className="h-20 w-20 bg-red-500 rounded-full flex items-center justify-center">
+                <span className="text-white text-2xl">⚠</span>
+              </div>
             </div>
             <div className="text-center">
               <div className="text-6xl font-bold text-raimes-purple">2</div>
@@ -43,7 +94,9 @@ function Dashboard() {
           </div>
 
           <div className="bg-white rounded-2xl p-8 shadow flex items-center justify-center gap-6">
-            <img src={bellIcon} alt="Bell Icon" className="h-36" />
+            <div className="h-36 w-36 bg-blue-500 rounded-full flex items-center justify-center">
+              <span className="text-white text-4xl">🔔</span>
+            </div>
             <div className="text-center">
               <div className="text-6xl font-bold text-raimes-purple">0</div>
               <div className="text-raimes-purple font-semibold">

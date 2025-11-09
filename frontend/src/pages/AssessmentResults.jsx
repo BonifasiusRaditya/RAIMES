@@ -1,12 +1,20 @@
 import React, { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import Navbar from "../components/Navbar";
 
 export default function AssessmentResults() {
+  const navigate = useNavigate();
+  
   // Mock data (to be replaced by API later)
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("all");
   const [page, setPage] = useState(1);
   const pageSize = 8;
+
+  // Function untuk handle View Detail - redirect ke Data Validation
+  const handleViewDetail = (companyId) => {
+    navigate("/data-validation");
+  };
 
   const data = useMemo(
     () => [
@@ -269,9 +277,13 @@ export default function AssessmentResults() {
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex gap-2">
-                      <button className="px-3 py-2 border-2 border-raimes-yellow text-raimes-yellow font-semibold rounded-lg hover:bg-raimes-yellow hover:text-white">
+                      <button 
+                        onClick={() => handleViewDetail(row.id)}
+                        className="px-3 py-2 border-2 border-raimes-yellow text-raimes-yellow font-semibold rounded-lg hover:bg-raimes-yellow hover:text-white"
+                      >
                         View Detail
                       </button>
+
                       <button className="px-3 py-2 bg-raimes-yellow text-white font-semibold rounded-lg hover:opacity-90">
                         Download
                       </button>
