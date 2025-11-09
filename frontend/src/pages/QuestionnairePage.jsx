@@ -1,8 +1,8 @@
-import { useState } from 'react';
-import Navbar from '../components/Navbar';
+import { useState } from "react";
+import Navbar from "../components/Navbar";
 
 function QuestionnairePage() {
-  const [answer, setAnswer] = useState('');
+  const [answer, setAnswer] = useState("");
   const [files, setFiles] = useState([]);
   const [currentQuestion, setCurrentQuestion] = useState(1);
   const totalQuestions = 10;
@@ -23,23 +23,23 @@ function QuestionnairePage() {
   };
 
   const handleSaveAndContinue = () => {
-    console.log('Saving answer:', answer);
-    console.log('Attached files:', files);
+    console.log("Saving answer:", answer);
+    console.log("Attached files:", files);
   };
 
   const handleNextQuestion = () => {
     if (currentQuestion < totalQuestions) {
       setCurrentQuestion(currentQuestion + 1);
-      setAnswer('');
+      setAnswer("");
       setFiles([]);
     }
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen">
       <Navbar />
 
-      <div className="max-w-6xl mx-auto px-8 py-12">
+      <div className="max-w-6xl mx-auto px-8 py-12 bg-white bg-opacity-75 rounded-lg">
         <div className="bg-white rounded-lg shadow-sm p-12">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
             Questionnaire for Company Assessment
@@ -73,7 +73,7 @@ function QuestionnairePage() {
                 onDrop={handleDrop}
                 onDragOver={handleDragOver}
                 className="h-64 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:border-gray-400 transition-colors"
-                onClick={() => document.getElementById('fileInput').click()}
+                onClick={() => document.getElementById("fileInput").click()}
               >
                 <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mb-4">
                   <svg
@@ -90,8 +90,12 @@ function QuestionnairePage() {
                     />
                   </svg>
                 </div>
-                <p className="text-gray-900 font-medium mb-1">Upload Supporting File</p>
-                <p className="text-gray-500 text-sm">Drag & drop or click to browse</p>
+                <p className="text-gray-900 font-medium mb-1">
+                  Upload Supporting File
+                </p>
+                <p className="text-gray-500 text-sm">
+                  Drag & drop or click to browse
+                </p>
               </div>
               <input
                 id="fileInput"
