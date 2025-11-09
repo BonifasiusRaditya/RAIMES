@@ -67,3 +67,18 @@ CREATE TABLE Report IF NOT EXISTS(
     content TEXT,
     UNIQUE (assessmentID)
 );
+
+CREATE TABLE AccountRequest IF NOT EXISTS(
+    requestID SERIAL PRIMARY KEY,
+    username VARCHAR(100) NOT NULL,
+    email VARCHAR(100) NOT NULL,
+    companyName VARCHAR(255) NOT NULL,
+    affiliationProofFileName VARCHAR(255) NOT NULL,
+    affiliationProofPath VARCHAR(500) NOT NULL,
+    affiliationProofType VARCHAR(50),
+    status VARCHAR(50) DEFAULT 'pending',
+    requestDate TIMESTAMP WITHOUT TIME ZONE DEFAULT NOW(),
+    adminNotes TEXT,
+    reviewedDate TIMESTAMP WITHOUT TIME ZONE,
+    reviewedBy INT REFERENCES "User"(userID)
+);
