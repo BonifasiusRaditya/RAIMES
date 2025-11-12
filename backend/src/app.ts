@@ -4,6 +4,7 @@ import dotenv from 'dotenv';
 import authRoutes from './routes/authRoutes.js';
 import questionRoutes from './routes/questionRoutes.js';
 import questionnaireRoutes from './routes/questionnaireRoutes.js';
+import registrationRoutes from './routes/registrationRoutes.js';
 
 // Load environment variables
 dotenv.config();
@@ -44,6 +45,10 @@ app.get('/api/status', (req: Request, res: Response) => {
 
 // Auth routes
 app.use('/api/auth', authRoutes);
+
+// Registration request routes
+app.use('/api/auth', registrationRoutes);
+app.use('/api/admin', registrationRoutes);
 
 // Questionnaire routes
 app.use('/api/questionnaires', questionnaireRoutes);

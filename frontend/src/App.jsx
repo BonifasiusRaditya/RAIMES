@@ -6,8 +6,11 @@ import { Suspense, lazy } from "react";
 // Lazy load pages untuk optimize initial load
 const LoginPage = lazy(() => import("./pages/LoginPage"));
 const RegisterPage = lazy(() => import("./pages/RegisterPage"));
+const RegisterRequestPage = lazy(() => import("./pages/RegisterRequestPage"));
+const RegistrationPendingPage = lazy(() => import("./pages/RegistrationPendingPage"));
+const AdminAccountRequestsPage = lazy(() => import("./pages/AdminAccountRequestsPage"));
 const ContactPage = lazy(() => import("./pages/ContactPage"));
-const Dashboard = lazy(() => import("./pages/Dashboard"));
+const RoleDashboard = lazy(() => import("./components/RoleDashboard"));
 const QuestionnairePage = lazy(() => import("./pages/QuestionnairePage"));
 const AssessmentResults = lazy(() => import("./pages/AssessmentResults"));
 const DataValidation = lazy(() => import("./pages/DataValidation"));
@@ -45,12 +48,14 @@ function App() {
               <Route path="/" element={<RootIndex />} />
               <Route path="/login" element={<LoginPage />} />
               <Route path="/register" element={<RegisterPage />} />
+              <Route path="/register-request" element={<RegisterRequestPage />} />
+              <Route path="/registration-pending" element={<RegistrationPendingPage />} />
               <Route path="/contact" element={<ContactPage />} />
               <Route
                 path="/dashboard"
                 element={
                   <ProtectedRoute>
-                    <Dashboard />
+                    <RoleDashboard />
                   </ProtectedRoute>
                 }
               />
@@ -91,6 +96,14 @@ function App() {
                 element={
                   <ProtectedRoute>
                     <DataValidation />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/admin/account-requests"
+                element={
+                  <ProtectedRoute>
+                    <AdminAccountRequestsPage />
                   </ProtectedRoute>
                 }
               />
