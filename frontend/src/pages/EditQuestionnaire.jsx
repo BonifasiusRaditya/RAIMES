@@ -1,10 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import { questionService } from '../services/questionService';
+import { questionnaireService } from '../services/questionnaireService';
 
 const EditQuestionnaire = () => {
   const navigate = useNavigate();
+  const { id: questionnaireID } = useParams(); // Get questionnaireID from route params
+
+  // State untuk questionnaire info
+  const [questionnaire, setQuestionnaire] = useState(null);
 
   // State untuk form
   const [formData, setFormData] = useState({
@@ -26,19 +31,39 @@ const EditQuestionnaire = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCategory, setFilterCategory] = useState('all');
 
-  // Load questions on component mount
+  // Load questionnaire info and questions on component mount
   useEffect(() => {
+    if (!questionnaireID) {
+      setError('Questionnaire ID tidak ditemukan');
+      return;
+    }
+    loadQuestionnaireInfo();
     loadQuestions();
-  }, []);
+  }, [questionnaireID]);
 
   // Reload questions when filters change
   useEffect(() => {
     const debounceTimer = setTimeout(() => {
-      loadQuestions();
+      if (questionnaireID) {
+        loadQuestions();
+      }
     }, 500); // Debounce search
 
     return () => clearTimeout(debounceTimer);
-  }, [searchTerm, filterCategory]);
+  }, [searchTerm, filterCategory, questionnaireID]);
+
+  // Load questionnaire info
+  const loadQuestionnaireInfo = async () => {
+    try {
+      const response = await questionnaireService.getQuestionnaireById(questionnaireID);
+      if (response.success) {
+        setQuestionnaire(response.data);
+      }
+    } catch (err) {
+      console.error('Error loading questionnaire:', err);
+      setError('Gagal memuat info questionnaire');
+    }
+  };
 
   // Load questions from API
   const loadQuestions = async () => {
@@ -47,6 +72,7 @@ const EditQuestionnaire = () => {
       setError(''); // Clear previous errors
       
       console.log('🔄 Loading questions with filters:', { 
+        questionnaireID,
         category: filterCategory, 
         search: searchTerm 
       });
@@ -60,7 +86,7 @@ const EditQuestionnaire = () => {
         throw new Error('Backend server tidak dapat diakses. Pastikan server berjalan di http://localhost:3000');
       }
       
-      // Then fetch questions
+      // Then fetch questions (filtered by questionnaireID)
       const response = await questionService.getAllQuestions({
         category: filterCategory === 'all' ? null : filterCategory,
         search: searchTerm
@@ -69,8 +95,12 @@ const EditQuestionnaire = () => {
       console.log('📊 API Response:', response);
       
       if (response.success) {
-        setQuestions(response.data || []);
-        console.log(`✅ Loaded ${response.data?.length || 0} questions`);
+        // Filter questions by questionnaireID on client side
+        const filteredQuestions = (response.data || []).filter(
+          q => String(q.questionnaireID) === String(questionnaireID)
+        );
+        setQuestions(filteredQuestions);
+        console.log(`✅ Loaded ${filteredQuestions.length} questions for questionnaire ${questionnaireID}`);
       } else {
         setError('Gagal memuat pertanyaan: ' + (response.message || 'Unknown error'));
       }
@@ -153,6 +183,7 @@ const EditQuestionnaire = () => {
 
       // Prepare data for API
       const questionData = {
+        questionnaireID: Number(questionnaireID), // Auto-populated from route params
         text: formData.text.trim(),
         type: formData.type,
         weight: parseInt(formData.weight),
@@ -195,7 +226,7 @@ const EditQuestionnaire = () => {
         throw new Error(response.message || 'Gagal menyimpan pertanyaan');
       }
 
-    } catch (err) {
+            questionnaireID: formData.questionnaireID ? Number(formData.questionnaireID) : null,
       console.error('Error submitting question:', err);
       setError(err.message || 'Terjadi kesalahan saat menyimpan pertanyaan');
     } finally {
@@ -242,6 +273,7 @@ const EditQuestionnaire = () => {
 
   // Handle edit question
   const handleEditQuestion = (question) => {
+
     setFormData({
       text: question.text,
       type: question.type,
@@ -268,12 +300,41 @@ const EditQuestionnaire = () => {
         <div className="max-w-7xl mx-auto">
           {/* Header */}
           <div className="mb-8">
-            <h1 className="text-4xl font-bold text-raimes-purple mb-2">
-              Edit Questionnaire
-            </h1>
-            <p className="text-gray-600">
-              Kelola pertanyaan untuk assessment AI mining
-            </p>
+            <div className="flex items-center gap-4 mb-4">
+              <button
+                onClick={() => navigate('/questionnaires')}
+                className="text-gray-600 hover:text-raimes-purple transition-colors"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                </svg>
+              </button>
+              <div>
+                <h1 className="text-4xl font-bold text-raimes-purple mb-1">
+                  {questionnaire?.title || 'Edit Questionnaire'}
+                </h1>
+                {questionnaire && (
+                  <div className="flex items-center gap-3 text-sm text-gray-600">
+                    {questionnaire.version && (
+                      <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded font-medium">
+                        v{questionnaire.version}
+                      </span>
+                    )}
+                    {questionnaire.standard && (
+                      <span className="px-2 py-1 bg-gray-100 text-gray-700 rounded">
+                        {questionnaire.standard}
+                      </span>
+                    )}
+                    <span>{questionnaire.question_count || 0} Pertanyaan</span>
+                  </div>
+                )}
+              </div>
+            </div>
+            {questionnaire?.description && (
+              <p className="text-gray-600">
+                {questionnaire.description}
+              </p>
+            )}
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -353,7 +414,7 @@ const EditQuestionnaire = () => {
                       <div className="space-y-3">
                         {formData.options.map((option, index) => (
                           <div key={index} className="flex gap-3 items-center">
-                            <div className="flex-shrink-0 w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center text-sm font-medium text-gray-600">
+                            <div className="shrink-0 w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center text-sm font-medium text-gray-600">
                               {String.fromCharCode(65 + index)}
                             </div>
                             <input
@@ -367,7 +428,7 @@ const EditQuestionnaire = () => {
                               <button
                                 type="button"
                                 onClick={() => removeOption(index)}
-                                className="flex-shrink-0 w-8 h-8 text-red-600 hover:bg-red-50 rounded-lg flex items-center justify-center"
+                                className="shrink-0 w-8 h-8 text-red-600 hover:bg-red-50 rounded-lg flex items-center justify-center"
                               >
                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -626,7 +687,7 @@ const EditQuestionnaire = () => {
                         <div className="space-y-2">
                           {selectedQuestion.options.map((option, index) => (
                             <div key={index} className="flex items-center gap-3">
-                              <span className="flex-shrink-0 w-6 h-6 bg-gray-100 rounded-full flex items-center justify-center text-xs font-medium text-gray-600">
+                              <span className="shrink-0 w-6 h-6 bg-gray-100 rounded-full flex items-center justify-center text-xs font-medium text-gray-600">
                                 {String.fromCharCode(65 + index)}
                               </span>
                               <span className="text-sm text-gray-900">{option}</span>

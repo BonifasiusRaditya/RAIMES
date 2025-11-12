@@ -35,8 +35,8 @@ export const authenticateToken = (
         }
 
         const decoded = jwt.verify(
-            token, 
-            process.env.JWT_SECRET || 'default_secret'
+            token,
+            (process.env.JWT_SECRET || 'default_secret') as jwt.Secret
         ) as JWTPayload;
         
         req.user = decoded;

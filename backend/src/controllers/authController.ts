@@ -41,10 +41,19 @@ export const login = async (req: Request, res: Response): Promise<void> => {
             return;
         }
 
-        const user = result.rows[0];
+        const rawUser = result.rows[0];
+
+        // Normalize DB column names (some DBs use userID / userid / user_id)
+        const user = {
+            userid: rawUser.userid ?? rawUser.userID ?? rawUser.user_id,
+            username: rawUser.username,
+            email: rawUser.email,
+            role: rawUser.role,
+            password: rawUser.password,
+        };
 
         // Verifikasi password
-        const isPasswordValid = await bcrypt.compare(password, user.password);
+        const isPasswordValid = await bcrypt.compare(password, user.password || '');
 
         if (!isPasswordValid) {
             res.status(401).json({
@@ -62,9 +71,9 @@ export const login = async (req: Request, res: Response): Promise<void> => {
                 username: user.username,
                 email: user.email,
                 role: user.role
-            },
-            jwtSecret,
-            { expiresIn: '24h' }
+            } as object,
+            jwtSecret as jwt.Secret,
+            { expiresIn: process.env.JWT_EXPIRES_IN || '24h' } as jwt.SignOptions
         );
 
         res.status(200).json({
@@ -130,10 +139,11 @@ export const register = async (req: Request, res: Response): Promise<void> => {
         const hashedPassword = await bcrypt.hash(password, saltRounds);
 
         // Insert user baru dengan parameterized query
+        // Use RETURNING * to avoid column name mismatches (userID vs userid)
         const insertQuery = `
             INSERT INTO "User" (username, password, email, role) 
             VALUES ($1, $2, $3, $4) 
-            RETURNING userid, username, email, role
+            RETURNING *
         `;
         const insertResult = await pool.query(insertQuery, [
             username,
@@ -142,7 +152,13 @@ export const register = async (req: Request, res: Response): Promise<void> => {
             role.toLowerCase()
         ]);
 
-        const newUser = insertResult.rows[0];
+        const rawNewUser = insertResult.rows[0];
+        const newUser = {
+            userid: rawNewUser.userid ?? rawNewUser.userID ?? rawNewUser.user_id,
+            username: rawNewUser.username,
+            email: rawNewUser.email,
+            role: rawNewUser.role,
+        };
 
         res.status(201).json({
             success: true,
@@ -196,12 +212,12 @@ export const getCurrentUser = async (req: Request, res: Response): Promise<void>
 
         const decoded = jwt.verify(
             token,
-            process.env.JWT_SECRET || 'default_secret'
+            (process.env.JWT_SECRET || 'default_secret') as jwt.Secret
         ) as JWTPayload;
 
-        // Query user dari database dengan parameterized query
-        const query = 'SELECT userid, username, email, role FROM "User" WHERE userid = $1';
-        const result = await pool.query(query, [decoded.userID]);
+    // Query user dari database with multiple possible id column names
+    const query = 'SELECT * FROM "User" WHERE userid = $1 OR "userID" = $1 OR user_id = $1';
+    const result = await pool.query(query, [decoded.userID]);
 
         if (result.rows.length === 0) {
             res.status(404).json({

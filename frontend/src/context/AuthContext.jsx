@@ -28,7 +28,8 @@ export const AuthProvider = ({ children }) => {
     const login = async (username, password) => {
         try {
             const response = await authService.login(username, password);
-            setUser(response.data.user);
+            const userFromResponse = response?.data?.user || response?.data?.data?.user;
+            setUser(userFromResponse || authService.getUser());
             setIsAuthenticated(true);
             return response;
         } catch (error) {

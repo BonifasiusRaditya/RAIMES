@@ -13,6 +13,7 @@ const AssessmentResults = lazy(() => import("./pages/AssessmentResults"));
 const DataValidation = lazy(() => import("./pages/DataValidation"));
 const LandingPage = lazy(() => import("./pages/LandingPage"));
 const EditQuestionnaire = lazy(() => import("./pages/EditQuestionnaire"));
+const QuestionnairesPage = lazy(() => import("./pages/QuestionnairesPage"));
 import { useAuth } from "./context/AuthContext";
 
 // Loading component
@@ -54,7 +55,15 @@ function App() {
                 }
               />
               <Route
-                path="/edit-questionnaire"
+                path="/questionnaires"
+                element={
+                  <ProtectedRoute>
+                    <QuestionnairesPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/edit-questionnaire/:id"
                 element={
                   <ProtectedRoute>
                     <EditQuestionnaire />

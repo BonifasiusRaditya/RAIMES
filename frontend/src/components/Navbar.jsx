@@ -25,7 +25,7 @@ export default function Navbar() {
         </div>
 
         <div className="flex items-center gap-12">
-          {[['/dashboard','Dashboard'],['/assessment-results','Assessment Results'],['/edit-questionnaire','Edit Questionnaire'],['/final-report','Final Report']].map(([to, label]) => (
+          {[['/dashboard','Dashboard'],['/assessment-results','Assessment Results'],['/questionnaires','Edit Questionnaire'],['/final-report','Final Report']].map(([to, label]) => (
             <div key={to} className="hover:transform hover:-translate-y-0.5 hover:scale-98 transition-all duration-200">
               <Link
                 to={to}

@@ -3,6 +3,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import authRoutes from './routes/authRoutes.js';
 import questionRoutes from './routes/questionRoutes.js';
+import questionnaireRoutes from './routes/questionnaireRoutes.js';
 
 // Load environment variables
 dotenv.config();
@@ -43,6 +44,9 @@ app.get('/api/status', (req: Request, res: Response) => {
 
 // Auth routes
 app.use('/api/auth', authRoutes);
+
+// Questionnaire routes
+app.use('/api/questionnaires', questionnaireRoutes);
 
 // Question routes  
 app.use('/api/questions', questionRoutes);

@@ -3,6 +3,7 @@ import pool from '../config/database.js';
 
 interface Question {
   questionID?: number;
+  questionnaireID?: number;
   text: string;
   type: 'essay' | 'multiple_choice';
   weight: number;
@@ -35,14 +36,15 @@ export const testQuestions = async (req: Request, res: Response): Promise<void> 
 // /api/questions/public
 export const getAllQuestionsPublic = async (req: Request, res: Response): Promise<void> => {
     try {
-        const { category, type, search } = req.query;
-        
+      const { category, type, search } = req.query;
+      
         let query = `
-          SELECT questionID as id, text, type, weight, category, require_evidence, options, 
+          SELECT questionID as id, questionnaireid AS "questionnaireID", text, type, weight, category, require_evidence, options, 
                  created_at, updated_at 
           FROM Question 
           WHERE 1=1
         `;
+        
         const queryParams: any[] = [];
         let paramCount = 0;
 
@@ -69,11 +71,8 @@ export const getAllQuestionsPublic = async (req: Request, res: Response): Promis
 
         const result = await pool.query(query, queryParams);
         
-        // Parse options JSON for multiple choice questions
-        const questions = result.rows.map((question: any) => ({
-            ...question,
-            options: question.options ? JSON.parse(question.options) : null
-        }));
+        // JSONB options are automatically parsed by pg driver, no need for JSON.parse
+        const questions = result.rows;
 
         res.status(200).json({
             success: true,
@@ -97,7 +96,7 @@ export const getAllQuestions = async (req: Request, res: Response) => {
     const { category, type, search } = req.query;
     
     let query = `
-      SELECT questionID as id, text, type, weight, category, require_evidence, options, 
+      SELECT questionID as id, questionnaireid AS "questionnaireID", text, type, weight, category, require_evidence, options, 
              created_at, updated_at 
       FROM Question 
       WHERE 1=1
@@ -128,11 +127,8 @@ export const getAllQuestions = async (req: Request, res: Response) => {
 
     const result = await pool.query(query, queryParams);
     
-    // Parse options JSON for multiple choice questions
-    const questions = result.rows.map((question: any) => ({
-      ...question,
-      options: question.options ? JSON.parse(question.options) : null
-    }));
+    // JSONB options are automatically parsed by pg driver, no need for JSON.parse
+    const questions = result.rows;
 
     res.status(200).json({
       success: true,
@@ -154,7 +150,7 @@ export const getQuestionById = async (req: Request, res: Response) => {
     const { id } = req.params;
     
     const result = await pool.query(
-      `SELECT questionID as id, text, type, weight, category, require_evidence, options, 
+      `SELECT questionID as id, questionnaireid AS "questionnaireID", text, type, weight, category, require_evidence, options, 
               created_at, updated_at 
        FROM Question 
        WHERE questionID = $1`,
@@ -169,10 +165,7 @@ export const getQuestionById = async (req: Request, res: Response) => {
     }
 
     const question = result.rows[0];
-    // Parse options JSON for multiple choice questions
-    if (question.options) {
-      question.options = JSON.parse(question.options);
-    }
+    // JSONB options are automatically parsed by pg driver, no need for JSON.parse
 
     res.status(200).json({
       success: true,
@@ -190,16 +183,39 @@ export const getQuestionById = async (req: Request, res: Response) => {
 
 export const createQuestion = async (req: Request, res: Response) => {
   try {
-    const { text, type, weight, category, require_evidence, options }: Question = req.body;
+    // Accept different casing/keys from frontend: questionnaireID | questionnaireId | questionnaireid
+    const rawBody: any = req.body || {};
+    const questionnaireID: number | null = rawBody.questionnaireID ?? rawBody.questionnaireId ?? rawBody.questionnaireid ?? null;
+    const { text, type, weight, category, require_evidence, options }: any = rawBody;
 
-    // Validation
+    // Debug log to help trace payload issues (remove or lower log level in production)
+    console.debug('createQuestion payload:', { questionnaireID, text, type, weight, category, require_evidence, options });
+
+    // Require questionnaireID to avoid DB NOT NULL error
+    if (questionnaireID == null || questionnaireID <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'questionnaireID is required and must be a positive integer'
+      });
+    }
+
+    // Verify questionnaire exists
+    const qCheck = await pool.query('SELECT questionnaireid FROM questionnaire WHERE questionnaireid = $1', [questionnaireID]);
+    if (qCheck.rows.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid questionnaireID'
+      });
+    }
+
+    // Validation (existing)
     if (!text || !text.trim()) {
       return res.status(400).json({
         success: false,
         message: 'Question text is required'
       });
     }
-
+    
     if (!type || !['essay', 'multiple_choice'].includes(type)) {
       return res.status(400).json({
         success: false,
@@ -230,7 +246,6 @@ export const createQuestion = async (req: Request, res: Response) => {
         });
       }
 
-      // Check for empty options
       const validOptions = options.filter(opt => opt && opt.trim() !== '');
       if (validOptions.length < 2) {
         return res.status(400).json({
@@ -240,23 +255,18 @@ export const createQuestion = async (req: Request, res: Response) => {
       }
     }
 
-    // Prepare options for database storage
-    const optionsJson = type === 'multiple_choice' && options 
-      ? JSON.stringify(options.filter(opt => opt && opt.trim() !== ''))
+    const optionsJson = type === 'multiple_choice' && Array.isArray(options)
+      ? JSON.stringify((options as string[]).filter((opt: string) => opt && opt.trim() !== ''))
       : null;
 
     const result = await pool.query(
-      `INSERT INTO Question (text, type, weight, category, require_evidence, options)
-       VALUES ($1, $2, $3, $4, $5, $6)
-       RETURNING questionID as id, text, type, weight, category, require_evidence, options, created_at`,
-      [text.trim(), type, weight || 1, category.trim(), require_evidence || false, optionsJson]
+      `INSERT INTO Question (questionnaireid, text, type, weight, category, require_evidence, options)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
+       RETURNING questionID as id, questionnaireid AS "questionnaireID", text, type, weight, category, require_evidence, options, created_at`,
+      [questionnaireID, text.trim(), type, weight || 1, category.trim(), require_evidence || false, optionsJson]
     );
 
     const newQuestion = result.rows[0];
-    // Parse options back to array for response
-    if (newQuestion.options) {
-      newQuestion.options = JSON.parse(newQuestion.options);
-    }
 
     res.status(201).json({
       success: true,
@@ -276,15 +286,32 @@ export const createQuestion = async (req: Request, res: Response) => {
 export const updateQuestion = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const { text, type, weight, category, require_evidence, options }: Question = req.body;
+    const rawBody: any = req.body || {};
+    const questionnaireID: number | null = rawBody.questionnaireID ?? rawBody.questionnaireId ?? rawBody.questionnaireid ?? null;
+    const { text, type, weight, category, require_evidence, options }: any = rawBody;
 
-    // Check if question exists
-    const existingQuestion = await pool.query('SELECT questionID FROM Question WHERE questionID = $1', [id]);
+    // Debug log to help trace payload issues
+    console.debug('updateQuestion payload:', { id, questionnaireID, text, type, weight, category, require_evidence, options });
+
+    // Get existing question including its questionnaireid
+    const existingQuestion = await pool.query('SELECT questionID, questionnaireid FROM Question WHERE questionID = $1', [id]);
     if (existingQuestion.rows.length === 0) {
       return res.status(404).json({
         success: false,
         message: 'Question not found'
       });
+    }
+    const currentQuestionnaireId = existingQuestion.rows[0].questionnaireid;
+
+    // If provided, validate questionnaireID
+    if (questionnaireID && questionnaireID !== currentQuestionnaireId) {
+      const qCheck = await pool.query('SELECT questionnaireid FROM questionnaire WHERE questionnaireid = $1', [questionnaireID]);
+      if (qCheck.rows.length === 0) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid questionnaireID'
+        });
+      }
     }
 
     // Validation (same as create)
@@ -334,25 +361,24 @@ export const updateQuestion = async (req: Request, res: Response) => {
       }
     }
 
-    // Prepare options for database storage
-    const optionsJson = type === 'multiple_choice' && options 
-      ? JSON.stringify(options.filter(opt => opt && opt.trim() !== ''))
+    const optionsJson = type === 'multiple_choice' && Array.isArray(options)
+      ? JSON.stringify((options as string[]).filter((opt: string) => opt && opt.trim() !== ''))
       : null;
+
+    // Use provided questionnaireID or keep existing
+    const questionnaireIdToUse = (questionnaireID !== undefined && questionnaireID !== null) ? questionnaireID : currentQuestionnaireId;
 
     const result = await pool.query(
       `UPDATE Question 
-       SET text = $1, type = $2, weight = $3, category = $4, 
-           require_evidence = $5, options = $6, updated_at = CURRENT_TIMESTAMP
-       WHERE questionID = $7
-       RETURNING questionID as id, text, type, weight, category, require_evidence, options, created_at, updated_at`,
-      [text.trim(), type, weight || 1, category.trim(), require_evidence || false, optionsJson, id]
+       SET questionnaireid = $1, text = $2, type = $3, weight = $4, category = $5, 
+           require_evidence = $6, options = $7, updated_at = CURRENT_TIMESTAMP
+       WHERE questionID = $8
+       RETURNING questionID as id, questionnaireid AS "questionnaireID", text, type, weight, category, require_evidence, options, created_at, updated_at`,
+      [questionnaireIdToUse, text.trim(), type, weight || 1, category.trim(), require_evidence || false, optionsJson, id]
     );
 
     const updatedQuestion = result.rows[0];
-    // Parse options back to array for response
-    if (updatedQuestion.options) {
-      updatedQuestion.options = JSON.parse(updatedQuestion.options);
-    }
+    // JSONB options are automatically parsed by pg driver, no need for JSON.parse
 
     res.status(200).json({
       success: true,

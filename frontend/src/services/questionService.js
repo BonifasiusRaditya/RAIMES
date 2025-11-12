@@ -60,6 +60,7 @@ export const questionService = {
   // Create a new question
   createQuestion: async (questionData) => {
     try {
+      console.log('Posting questionData:', questionData); // <-- cek apakah ada questionnaireId
       const response = await api.post('/questions', questionData);
       return response.data;
     } catch (error) {

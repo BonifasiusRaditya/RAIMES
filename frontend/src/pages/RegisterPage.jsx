@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import Header from "../components/Header";
 import logoFull from "../assets/logo-full.png";
-import { submitAccountRequest } from "../services/authService";
+import authService from "../services/authService";
 
 function RegisterPage() {
   const [username, setUsername] = useState("");
@@ -94,7 +94,7 @@ function RegisterPage() {
       formData.append("companyName", companyName);
       formData.append("affiliationProof", affiliationFile);
 
-      await submitAccountRequest(formData);
+  await authService.submitAccountRequest(formData);
 
       setSuccess(
         "Account request submitted successfully! Admin will review your request soon."
