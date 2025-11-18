@@ -17,6 +17,7 @@ const DataValidation = lazy(() => import("./pages/DataValidation"));
 const LandingPage = lazy(() => import("./pages/LandingPage"));
 const EditQuestionnaire = lazy(() => import("./pages/EditQuestionnaire"));
 const QuestionnairesPage = lazy(() => import("./pages/QuestionnairesPage"));
+const AddAccountPage = lazy(() => import("./pages/AddAccountPage"));
 import { useAuth } from "./context/AuthContext";
 
 // Loading component
@@ -104,6 +105,14 @@ function App() {
                 element={
                   <ProtectedRoute>
                     <AdminAccountRequestsPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/admin/add-account"
+                element={
+                  <ProtectedRoute>
+                    <AddAccountPage />
                   </ProtectedRoute>
                 }
               />

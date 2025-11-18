@@ -1,6 +1,7 @@
 import Navbar from "../components/Navbar";
 import warningIcon from "../assets/warning-icon.png";
 import bellIcon from "../assets/bell-icon.png";
+import plusIcon from "../assets/plus-icon.png";
 
 // Data dummy untuk companies
 const companies = [
@@ -61,7 +62,7 @@ function Dashboard() {
           Dashboard
         </h1>
 
-        <div className="grid grid-cols-3 gap-6 mb-8">
+        <div className="grid grid-cols-4 gap-6 mb-8">
           <div className="bg-white rounded-2xl p-8 shadow">
             <h2 className="text-xl font-semibold text-raimes-purple mb-4">
               Questionnaire Progress
@@ -81,8 +82,8 @@ function Dashboard() {
 
           <div className="bg-white rounded-2xl p-8 shadow flex items-center justify-center gap-6">
             <div className="flex flex-col items-center">
-              <div className="h-20 w-20 bg-red-500 rounded-full flex items-center justify-center">
-                <span className="text-white text-2xl">⚠</span>
+              <div className="h-20 w-20 bg-raimes-purple rounded-full flex items-center justify-center">
+                <img src={warningIcon} alt="Warning Icon" className="h-10 w-10" />
               </div>
             </div>
             <div className="text-center">
@@ -94,13 +95,27 @@ function Dashboard() {
           </div>
 
           <div className="bg-white rounded-2xl p-8 shadow flex items-center justify-center gap-6">
-            <div className="h-36 w-36 bg-blue-500 rounded-full flex items-center justify-center">
-              <span className="text-white text-4xl">🔔</span>
+            <div className="h-20 w-20 bg-raimes-purple rounded-full flex items-center justify-center">
+              <img src={bellIcon} alt="Bell Icon" className="h-16 w-16" />
             </div>
             <div className="text-center">
               <div className="text-6xl font-bold text-raimes-purple">0</div>
               <div className="text-raimes-purple font-semibold">
                 Notification
+              </div>
+            </div>
+          </div>
+
+          <div 
+            className="bg-white rounded-2xl p-8 shadow flex items-center justify-center gap-6 cursor-pointer hover:shadow-lg transition-shadow"
+            onClick={() => window.location.href = '/admin/add-account'}
+          >
+            <div className="h-20 w-20 bg-raimes-purple rounded-full flex items-center justify-center">
+              <img src={plusIcon} alt="Plus Icon" className="h-10 w-10" />
+            </div>
+            <div className="text-center">
+              <div className="text-3xltext-raimes-purple font-semibold">
+                Add New User
               </div>
             </div>
           </div>
