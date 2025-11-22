@@ -1,6 +1,6 @@
 import { useAuth } from '../context/AuthContext';
-import Dashboard from '../pages/Dashboard';
-import CompanyDashboard from '../pages/CompanyDashboard';
+import Dashboard from '../pages/auditor/Dashboard';
+import CompanyDashboard from '../pages/user/CompanyDashboard';
 
 const RoleDashboard = () => {
   const { user } = useAuth();

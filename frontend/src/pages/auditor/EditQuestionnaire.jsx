@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import Navbar from '../components/Navbar';
-import { questionService } from '../services/questionService';
-import { questionnaireService } from '../services/questionnaireService';
+import Navbar from '../../components/Navbar';
+import { questionService } from '../../services/questionService';
+import { questionnaireService } from '../../services/questionnaireService';
 
 const EditQuestionnaire = () => {
   const navigate = useNavigate();

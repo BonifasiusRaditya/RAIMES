@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
-import { useAuth } from '../context/AuthContext';
-import { questionnaireService } from '../services/questionnaireService';
-import Navbar from '../components/Navbar';
+import { useAuth } from '../../context/AuthContext';
+import { questionnaireService } from '../../services/questionnaireService';
+import { assessmentService } from '../../services/assessmentService';
+import Navbar from '../../components/Navbar';
 
 const CompanyDashboard = () => {
   const { user } = useAuth();
@@ -56,14 +57,21 @@ const CompanyDashboard = () => {
 
   const handleStartAssessment = async (questionnaireId) => {
     try {
-      // TODO: Create assessment endpoint
-      // const response = await assessmentService.startAssessment(questionnaireId);
-      // if (response.success) {
-      //   window.location.href = `/assessment/${response.data.assessmentID}`;
-      // }
+      // Check if assessment already exists
+      const existingAssessment = assessments.find(a => a.questionnaireId === parseInt(questionnaireId));
       
-      // Temporary redirect to questionnaire page
-      window.location.href = `/questionnaire/${questionnaireId}`;
+      if (existingAssessment) {
+        // Continue existing assessment
+        window.location.href = `/questionnaire/${questionnaireId}`;
+      } else {
+        // Start new assessment
+        const response = await assessmentService.startAssessment(questionnaireId);
+        if (response.success) {
+          window.location.href = `/questionnaire/${questionnaireId}`;
+        } else {
+          alert('Failed to start assessment: ' + response.message);
+        }
+      }
     } catch (err) {
       console.error('Error starting assessment:', err);
       alert('Failed to start assessment');
@@ -200,40 +208,56 @@ const CompanyDashboard = () => {
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {questionnaires.map((questionnaire) => (
-                  <div key={questionnaire.id} className="border border-gray-200 rounded-lg p-6 hover:shadow-lg transition-shadow">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                      {questionnaire.title}
-                    </h3>
-                    <p className="text-sm text-gray-600 mb-4 line-clamp-2">
-                      {questionnaire.description || 'No description available'}
-                    </p>
-                    
-                    <div className="space-y-2 mb-4">
-                      <div className="flex items-center text-sm text-gray-500">
-                        <svg className="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                        </svg>
-                        Created: {formatDate(questionnaire.created_at)}
-                      </div>
-                      {questionnaire.updated_at && (
+                {questionnaires.map((questionnaire) => {
+                  const existingAssessment = assessments.find(a => a.questionnaireId === questionnaire.id);
+                  
+                  return (
+                    <div key={questionnaire.id} className="border border-gray-200 rounded-lg p-6 hover:shadow-lg transition-shadow">
+                      <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                        {questionnaire.title}
+                      </h3>
+                      <p className="text-sm text-gray-600 mb-4 line-clamp-2">
+                        {questionnaire.description || 'No description available'}
+                      </p>
+                      
+                      <div className="space-y-2 mb-4">
                         <div className="flex items-center text-sm text-gray-500">
                           <svg className="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                           </svg>
-                          Updated: {formatDate(questionnaire.updated_at)}
+                          Created: {formatDate(questionnaire.created_at)}
                         </div>
-                      )}
-                    </div>
+                        {questionnaire.updated_at && (
+                          <div className="flex items-center text-sm text-gray-500">
+                            <svg className="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                            </svg>
+                            Updated: {formatDate(questionnaire.updated_at)}
+                          </div>
+                        )}
+                        {existingAssessment && (
+                          <div className="flex items-center text-sm text-blue-600">
+                            <svg className="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            Progress: {existingAssessment.progressPercentage}%
+                          </div>
+                        )}
+                      </div>
 
-                    <button
-                      onClick={() => handleStartAssessment(questionnaire.id)}
-                      className="w-full bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium"
-                    >
-                      Start Assessment
-                    </button>
-                  </div>
-                ))}
+                      <button
+                        onClick={() => handleStartAssessment(questionnaire.id)}
+                        className={`w-full px-4 py-2 rounded-lg transition-colors font-medium ${
+                          existingAssessment
+                            ? 'bg-blue-600 text-white hover:bg-blue-700'
+                            : 'bg-green-600 text-white hover:bg-green-700'
+                        }`}
+                      >
+                        {existingAssessment ? 'Continue Assessment' : 'Start Assessment'}
+                      </button>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>
@@ -282,10 +306,13 @@ const CompanyDashboard = () => {
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
                     {assessments.map((assessment) => (
-                      <tr key={assessment.id} className="hover:bg-gray-50">
+                      <tr key={assessment.assessmentId} className="hover:bg-gray-50">
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm font-medium text-gray-900">
-                            {assessment.questionnaireName}
+                            {assessment.questionnaireTitle}
+                          </div>
+                          <div className="text-sm text-gray-500">
+                            {assessment.questionnaireDescription}
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
@@ -297,11 +324,14 @@ const CompanyDashboard = () => {
                           <div className="flex items-center">
                             <div className="w-full bg-gray-200 rounded-full h-2 mr-2">
                               <div 
-                                className="bg-blue-600 h-2 rounded-full" 
-                                style={{ width: `${assessment.progress || 0}%` }}
+                                className="bg-blue-600 h-2 rounded-full transition-all duration-300" 
+                                style={{ width: `${assessment.progressPercentage || 0}%` }}
                               ></div>
                             </div>
-                            <span className="text-sm text-gray-600">{assessment.progress || 0}%</span>
+                            <span className="text-sm text-gray-600">{assessment.progressPercentage || 0}%</span>
+                          </div>
+                          <div className="text-xs text-gray-500 mt-1">
+                            {assessment.answeredQuestions}/{assessment.totalQuestions} completed
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
@@ -312,12 +342,18 @@ const CompanyDashboard = () => {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                           {assessment.status === 'completed' ? (
-                            <button className="text-blue-600 hover:text-blue-900">
+                            <button 
+                              className="text-green-600 hover:text-green-900 font-medium"
+                              onClick={() => alert('View results feature coming soon!')}
+                            >
                               View Results
                             </button>
                           ) : (
-                            <button className="text-blue-600 hover:text-blue-900">
-                              Continue
+                            <button 
+                              className="text-blue-600 hover:text-blue-900 font-medium"
+                              onClick={() => window.location.href = `/questionnaire/${assessment.questionnaireId}`}
+                            >
+                              Continue ({assessment.progressPercentage || 0}%)
                             </button>
                           )}
                         </td>

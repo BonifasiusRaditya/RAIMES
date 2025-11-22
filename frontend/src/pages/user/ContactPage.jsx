@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from "react";
 // eslint-disable-next-line no-unused-vars
 import { motion, useReducedMotion } from "framer-motion";
-import Header from "../components/Header";
+import Header from "../../components/Header";
 import {
   Mail,
   MessageSquare,

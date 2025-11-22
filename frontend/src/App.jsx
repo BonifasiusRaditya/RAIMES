@@ -1,23 +1,25 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
 import ProtectedRoute from "./components/ProtectedRoute";
+import AdminRoute from "./components/AdminRoute";
+import AuditorRoute from "./components/AuditorRoute";
 import { Suspense, lazy } from "react";
 
 // Lazy load pages untuk optimize initial load
-const LoginPage = lazy(() => import("./pages/LoginPage"));
-const RegisterPage = lazy(() => import("./pages/RegisterPage"));
-const RegisterRequestPage = lazy(() => import("./pages/RegisterRequestPage"));
-const RegistrationPendingPage = lazy(() => import("./pages/RegistrationPendingPage"));
-const AdminAccountRequestsPage = lazy(() => import("./pages/AdminAccountRequestsPage"));
-const ContactPage = lazy(() => import("./pages/ContactPage"));
+const LoginPage = lazy(() => import("./pages/auth/LoginPage"));
+const RegisterPage = lazy(() => import("./pages/auth/RegisterPage"));
+const RegisterRequestPage = lazy(() => import("./pages/auth/RegisterRequestPage"));
+const RegistrationPendingPage = lazy(() => import("./pages/auth/RegistrationPendingPage"));
+const AdminAccountRequestsPage = lazy(() => import("./pages/admin/AdminAccountRequestsPage"));
+const ContactPage = lazy(() => import("./pages/user/ContactPage"));
 const RoleDashboard = lazy(() => import("./components/RoleDashboard"));
-const QuestionnairePage = lazy(() => import("./pages/QuestionnairePage"));
-const AssessmentResults = lazy(() => import("./pages/AssessmentResults"));
-const DataValidation = lazy(() => import("./pages/DataValidation"));
-const LandingPage = lazy(() => import("./pages/LandingPage"));
-const EditQuestionnaire = lazy(() => import("./pages/EditQuestionnaire"));
-const QuestionnairesPage = lazy(() => import("./pages/QuestionnairesPage"));
-const AddAccountPage = lazy(() => import("./pages/AddAccountPage"));
+const QuestionnairePage = lazy(() => import("./pages/user/QuestionnairePage"));
+const AssessmentResults = lazy(() => import("./pages/auditor/AssessmentResults"));
+const DataValidation = lazy(() => import("./pages/auditor/DataValidation"));
+const LandingPage = lazy(() => import("./pages/shared/LandingPage"));
+const EditQuestionnaire = lazy(() => import("./pages/auditor/EditQuestionnaire"));
+const QuestionnairesPage = lazy(() => import("./pages/auditor/QuestionnairesPage"));
+const AddAccountPage = lazy(() => import("./pages/admin/AddAccountPage"));
 import { useAuth } from "./context/AuthContext";
 
 // Loading component
@@ -63,17 +65,17 @@ function App() {
               <Route
                 path="/questionnaires"
                 element={
-                  <ProtectedRoute>
+                  <AuditorRoute>
                     <QuestionnairesPage />
-                  </ProtectedRoute>
+                  </AuditorRoute>
                 }
               />
               <Route
                 path="/edit-questionnaire/:id"
                 element={
-                  <ProtectedRoute>
+                  <AuditorRoute>
                     <EditQuestionnaire />
-                  </ProtectedRoute>
+                  </AuditorRoute>
                 }
               />
               <Route
@@ -85,35 +87,43 @@ function App() {
                 }
               />
               <Route
-                path="/assessment-results"
+                path="/questionnaire/:id"
                 element={
                   <ProtectedRoute>
-                    <AssessmentResults />
+                    <QuestionnairePage />
                   </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/assessment-results"
+                element={
+                  <AuditorRoute>
+                    <AssessmentResults />
+                  </AuditorRoute>
                 }
               />
               <Route
                 path="/data-validation"
                 element={
-                  <ProtectedRoute>
+                  <AuditorRoute>
                     <DataValidation />
-                  </ProtectedRoute>
+                  </AuditorRoute>
                 }
               />
               <Route
                 path="/admin/account-requests"
                 element={
-                  <ProtectedRoute>
+                  <AdminRoute>
                     <AdminAccountRequestsPage />
-                  </ProtectedRoute>
+                  </AdminRoute>
                 }
               />
               <Route
                 path="/admin/add-account"
                 element={
-                  <ProtectedRoute>
+                  <AdminRoute>
                     <AddAccountPage />
-                  </ProtectedRoute>
+                  </AdminRoute>
                 }
               />
             </Routes>

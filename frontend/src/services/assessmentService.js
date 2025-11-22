@@ -1,6 +1,81 @@
 import api from './api';
 
 export const assessmentService = {
+  // Get current assessment progress for resume functionality
+  getCurrentAssessment: async (questionnaireId) => {
+    try {
+      console.log('🔍 Getting current assessment for questionnaire:', questionnaireId);
+      const response = await api.get(`/assessments/current/${questionnaireId}`);
+      console.log('✅ Current assessment response:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('❌ Error getting current assessment:', error);
+      return null; // Return null if no assessment found
+    }
+  },
+
+  // Start a new assessment
+  startAssessment: async (questionnaireId) => {
+    try {
+      console.log('🚀 Starting assessment for questionnaire:', questionnaireId);
+      const response = await api.post('/assessments/start', { 
+        questionnaireId: parseInt(questionnaireId) 
+      });
+      console.log('✅ Assessment start response:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('❌ Error starting assessment:', error);
+      console.error('Error details:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status
+      });
+      throw error;
+    }
+  },
+
+  // Save progress when user answers a question (called on "Save & Continue")
+  saveProgress: async ({ assessmentId, questionId, answer, files = [] }) => {
+    try {
+      const response = await api.post('/assessments/save-progress', {
+        assessmentId: parseInt(assessmentId),
+        questionId: parseInt(questionId),
+        answer,
+        files
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error saving progress:', error);
+      throw error;
+    }
+  },
+
+  // Update current position when user navigates (without saving answer)
+  updateCurrentPosition: async (questionnaireId, currentQuestionIndex) => {
+    try {
+      console.log('🚶 Updating current position:', { questionnaireId, currentQuestionIndex });
+      const response = await api.put(`/assessments/position/${questionnaireId}`, {
+        currentQuestionIndex: parseInt(currentQuestionIndex)
+      });
+      console.log('✅ Position update response:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('❌ Error updating position:', error);
+      // Don't throw error for position updates, just log it
+      return null;
+    }
+  },
+
+  // Get assessment progress by ID
+  getAssessmentProgress: async (assessmentId) => {
+    try {
+      const response = await api.get(`/assessments/${assessmentId}/progress`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching assessment progress:', error);
+      throw error;
+    }
+  },
   // Get all assessments for current user/company
   getMyAssessments: async () => {
     try {
@@ -104,11 +179,19 @@ export const assessmentService = {
   // Admin/Auditor: Get all assessments
   getAllAssessments: async (filters = {}) => {
     try {
+      console.log('🔍 getAllAssessments called with filters:', filters);
       const params = new URLSearchParams(filters);
-      const response = await api.get(`/assessments?${params}`);
+      console.log('📡 Making request to:', `/assessments/all?${params}`);
+      const response = await api.get(`/assessments/all?${params}`);
+      console.log('✅ getAllAssessments response:', response.data);
       return response.data;
     } catch (error) {
-      console.error('Error fetching all assessments:', error);
+      console.error('❌ Error fetching all assessments:', error);
+      console.error('Error details:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status
+      });
       throw error;
     }
   },
@@ -124,5 +207,3 @@ export const assessmentService = {
     }
   },
 };
-
-export default assessmentService;

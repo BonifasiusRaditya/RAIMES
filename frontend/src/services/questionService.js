@@ -111,5 +111,31 @@ export const questionService = {
       console.error('Error fetching stats:', error);
       throw error;
     }
+  },
+
+  // Get questions by questionnaire ID (for users taking assessment)
+  getQuestionsByQuestionnaireId: async (questionnaireId) => {
+    try {
+      console.log('🔍 Fetching questions for questionnaire:', questionnaireId);
+      const response = await api.get(`/questions/questionnaire/${questionnaireId}`);
+      console.log('✅ Questions loaded:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('❌ Error fetching questions by questionnaire:', error);
+      throw error.response?.data?.message || 'Network error';
+    }
+  },
+
+  // Submit user answers for questionnaire
+  submitAnswers: async (submissionData) => {
+    try {
+      console.log('📤 Submitting answers:', submissionData);
+      const response = await api.post('/questions/submit-answers', submissionData);
+      console.log('✅ Answers submitted:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('❌ Error submitting answers:', error);
+      throw error.response?.data?.message || 'Network error';
+    }
   }
 };

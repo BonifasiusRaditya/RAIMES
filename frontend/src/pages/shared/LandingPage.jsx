@@ -1,7 +1,7 @@
 import React, { useMemo } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { Link } from "react-router-dom";
-import Header from "../components/Header";
+import Header from "../../components/Header";
 import { Droplets, Zap, Shield, Wind } from "lucide-react";
 
 export default function LandingPage() {

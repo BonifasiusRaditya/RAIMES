@@ -8,7 +8,9 @@ import {
   getQuestionCategories,
   getQuestionStats,
   testQuestions,
-  getAllQuestionsPublic
+  getAllQuestionsPublic,
+  getQuestionsByQuestionnaireId,
+  submitAnswers
 } from '../controllers/questionController.js';
 import { authenticateToken } from '../middleware/auth.js';
 
@@ -25,6 +27,8 @@ router.use(authenticateToken);
 router.get('/', getAllQuestions);
 router.get('/categories', getQuestionCategories);
 router.get('/stats', getQuestionStats);
+router.get('/questionnaire/:questionnaireId', getQuestionsByQuestionnaireId);
+router.post('/submit-answers', submitAnswers);
 router.get('/:id', getQuestionById);
 router.post('/', createQuestion);
 router.put('/:id', updateQuestion);

@@ -488,3 +488,111 @@ export const getQuestionStats = async (req: Request, res: Response) => {
     });
   }
 };
+
+// Get questions by questionnaire ID (untuk user mengisi)
+export const getQuestionsByQuestionnaireId = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { questionnaireId } = req.params;
+
+    const query = `
+      SELECT 
+        q.questionID,
+        q.text,
+        q.type,
+        q.weight,
+        q.category,
+        q.require_evidence,
+        q.options,
+        q.created_at,
+        q.updated_at
+      FROM Question q
+      WHERE q.questionnaireid = $1
+      ORDER BY q.questionID ASC
+    `;
+
+    const result = await pool.query(query, [questionnaireId]);
+
+    res.status(200).json({
+      success: true,
+      data: result.rows,
+      total: result.rows.length,
+      message: `Found ${result.rows.length} questions for questionnaire ${questionnaireId}`
+    });
+  } catch (error) {
+    console.error('Error fetching questions by questionnaire:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error retrieving questions',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+};
+
+// Submit user answers
+export const submitAnswers = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { questionnaireId, answers } = req.body;
+    const userId = (req as any).user?.userid; // from auth middleware
+
+    if (!questionnaireId || !answers || !userId) {
+      res.status(400).json({
+        success: false,
+        message: 'Missing required data: questionnaireId, answers, or user authentication'
+      });
+      return;
+    }
+
+    // Start transaction
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+
+      // Create assessment record
+      const assessmentQuery = `
+        INSERT INTO Assessment (userID, questionnaireID, submittedAt, status)
+        VALUES ($1, $2, NOW(), 'submitted')
+        RETURNING assessmentID
+      `;
+      
+      const assessmentResult = await client.query(assessmentQuery, [userId, questionnaireId]);
+      const assessmentId = assessmentResult.rows[0].assessmentid;
+
+      // Save individual answers
+      for (const [questionId, answer] of Object.entries(answers)) {
+        if (!questionId.includes('_evidence') && answer) { // Skip evidence files and empty answers
+          const answerQuery = `
+            INSERT INTO Answer (assessmentID, questionID, answerText)
+            VALUES ($1, $2, $3)
+          `;
+          await client.query(answerQuery, [assessmentId, questionId, answer]);
+        }
+      }
+
+      await client.query('COMMIT');
+
+      res.status(201).json({
+        success: true,
+        message: 'Assessment submitted successfully',
+        data: {
+          assessmentId,
+          submittedAt: new Date().toISOString(),
+          answersCount: Object.keys(answers).filter(key => !key.includes('_evidence')).length
+        }
+      });
+
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+
+  } catch (error) {
+    console.error('Error submitting answers:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error submitting assessment',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+};

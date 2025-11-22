@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { useAuth } from "../context/AuthContext";
-import Header from "../components/Header";
-import logoFull from "../assets/logo-full.png";
+import { useAuth } from "../../context/AuthContext";
+import Header from "../../components/Header";
+import logoFull from "../../assets/logo-full.png";
 
 function LoginPage() {
   const [username, setUsername] = useState("");

@@ -18,7 +18,11 @@ export const authenticateToken = (
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
 
+    console.log('🔐 Auth middleware - authHeader:', authHeader);
+    console.log('🎯 Auth middleware - token:', token ? 'Token present' : 'No token');
+
     if (!token) {
+        console.log('❌ No token provided');
         res.status(401).json({ 
             success: false, 
             message: 'Access token required' 
@@ -39,9 +43,11 @@ export const authenticateToken = (
             (process.env.JWT_SECRET || 'default_secret') as jwt.Secret
         ) as JWTPayload;
         
+        console.log('✅ Token decoded successfully:', decoded);
         req.user = decoded;
         next();
     } catch (error) {
+        console.log('❌ Token verification failed:', error);
         res.status(403).json({ 
             success: false, 
             message: 'Invalid or expired token' 

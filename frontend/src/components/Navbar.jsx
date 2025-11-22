@@ -29,7 +29,10 @@ export default function Navbar() {
             ['/dashboard','Dashboard'],
             ['/assessment-results','Assessment Results'],
             ['/questionnaires','Edit Questionnaire'],
-            ...(user?.role === 'admin' ? [['/admin/account-requests','Account Requests']] : []),
+            ...(user?.role === 'admin' ? [
+              ['/admin/account-requests','Account Requests'],
+              ['/admin/add-account','Add Account']
+            ] : []),
             ['/final-report','Final Report']
           ].map(([to, label]) => (
             <div key={to} className="hover:transform hover:-translate-y-0.5 hover:scale-98 transition-all duration-200">
