@@ -4,7 +4,7 @@ import {
   saveProgress,
   getAllAssessmentsWithProgress,
   getCurrentAssessment,
-  getUserAssessments,
+  getMyAssessments,
   updateCurrentPosition
 } from '../controllers/assessmentController.js';
 import { authenticateToken } from '../middleware/auth.js';
@@ -36,7 +36,7 @@ router.put('/position/:questionnaireId', updateCurrentPosition);
 router.post('/save-progress', saveProgress);
 
 // Get user's assessments
-router.get('/my-assessments', getUserAssessments);
+router.get('/my-assessments', getMyAssessments);
 
 // Admin/Auditor routes - get all assessments with progress
 router.get('/all', getAllAssessmentsWithProgress);

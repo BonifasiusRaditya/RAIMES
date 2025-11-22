@@ -1,5 +1,5 @@
 import type { Request, Response } from 'express';
-import pool from '../config/database';
+import pool from '../config/database.js';
 
 interface AuthRequest extends Request {
   user?: {
@@ -41,18 +41,40 @@ export const startAssessment = async (req: AuthRequest, res: Response): Promise<
     
     const { questionnaireId } = req.body;
     const userId = req.user?.userID;
-    const companyId = req.user?.companyid;
 
-    console.log('📊 Extracted values:', { questionnaireId, userId, companyId, userObject: req.user });
+    console.log('📊 Extracted values:', { questionnaireId, userId, userObject: req.user });
 
-    if (!questionnaireId || !userId || !companyId) {
-      console.log('❌ Missing required data:', { questionnaireId, userId, companyId });
+    if (!questionnaireId || !userId) {
+      console.log('❌ Missing required data:', { questionnaireId, userId });
       res.status(400).json({
         success: false,
-        message: `Missing required data - questionnaireId: ${questionnaireId}, userId: ${userId}, companyId: ${companyId}`
+        message: `Missing required data - questionnaireId: ${questionnaireId}, userId: ${userId}`
       });
       return;
     }
+
+    // Get user's company information
+    const userCompanyQuery = `
+      SELECT c.companyid, c.companyname
+      FROM Company c
+      WHERE c.userid = $1
+    `;
+    
+    const userCompanyResult = await pool.query(userCompanyQuery, [userId]);
+    
+    if (userCompanyResult.rows.length === 0) {
+      console.log('❌ No company found for user:', userId);
+      res.status(404).json({
+        success: false,
+        message: 'No company associated with this user'
+      });
+      return;
+    }
+    
+    const companyId = userCompanyResult.rows[0].companyid;
+    const companyName = userCompanyResult.rows[0].companyname;
+    
+    console.log('✅ Found company for user:', { userId, companyId, companyName });
 
     // Check if assessment already exists for this company and questionnaire
     const existingQuery = `
@@ -163,17 +185,36 @@ export const saveProgress = async (req: AuthRequest, res: Response): Promise<voi
   try {
     const { assessmentId, questionId, answer } = req.body;
     const userId = req.user?.userID;
-    const companyId = req.user?.companyid;
 
-    console.log('💾 Saving progress:', { assessmentId, questionId, answer, userId, companyId });
+    console.log('💾 Saving progress:', { assessmentId, questionId, answer, userId });
 
-    if (!assessmentId || !questionId || !userId || !companyId) {
+    if (!assessmentId || !questionId || answer === undefined || !userId) {
       res.status(400).json({
         success: false,
-        message: 'Missing required data'
+        message: 'Missing required data - assessmentId, questionId, answer, and userId are required'
       });
       return;
     }
+
+    // Get user's company information
+    const userCompanyQuery = `
+      SELECT c.companyid, c.companyname
+      FROM Company c
+      WHERE c.userid = $1
+    `;
+    
+    const userCompanyResult = await pool.query(userCompanyQuery, [userId]);
+    
+    if (userCompanyResult.rows.length === 0) {
+      console.log('❌ No company found for user:', userId);
+      res.status(404).json({
+        success: false,
+        message: 'No company associated with this user'
+      });
+      return;
+    }
+    
+    const companyId = userCompanyResult.rows[0].companyid;
 
     // Find assessment by companyId and questionnaireId
     // assessmentId parameter is actually questionnaireId from frontend
@@ -197,9 +238,9 @@ export const saveProgress = async (req: AuthRequest, res: Response): Promise<voi
     const assessment = assessmentResult.rows[0];
     const questionIdNum = parseInt(questionId);
     
-    console.log(`💾 Processing question ${questionIdNum} for assessment ${assessment.assessmentid}`);
+    console.log(`💾 Saving answer for question ${questionIdNum} in assessment ${assessment.assessmentid}: "${answer}"`);
     
-    // Save or update answer in database
+    // Save or update answer in database using UPSERT
     const upsertAnswerQuery = `
       INSERT INTO Answer (assessmentid, questionid, response)
       VALUES ($1, $2, $3)
@@ -371,7 +412,7 @@ export const getAllAssessmentsWithProgress = async (req: AuthRequest, res: Respo
     console.log('📊 Retrieved assessments from database:', result.rows.length);
 
     // Map database results to frontend format
-    const assessmentsData = result.rows.map(row => {
+    const assessmentsData = result.rows.map((row: any) => {
       const answeredCount = parseInt(row.answered_count) || 0;
       const totalQuestions = parseInt(row.total_count) || 24; // Default to 24 if no questions found
       
@@ -399,10 +440,10 @@ export const getAllAssessmentsWithProgress = async (req: AuthRequest, res: Respo
     // Calculate statistics
     const stats = {
       total: assessmentsData.length,
-      in_progress: assessmentsData.filter(a => a.status === 'in_progress').length,
-      completed: assessmentsData.filter(a => a.status === 'completed').length,
-      averageProgress: assessmentsData.length > 0 
-        ? Math.round(assessmentsData.reduce((sum, a) => sum + a.progressPercentage, 0) / assessmentsData.length)
+      in_progress: assessmentsData.filter((a: any) => a.status === 'in_progress').length,
+      completed: assessmentsData.filter((a: any) => a.status === 'completed').length,
+      averageProgress: assessmentsData.length > 0
+        ? Math.round(assessmentsData.reduce((sum: number, a: any) => sum + a.progressPercentage, 0) / assessmentsData.length)
         : 0
     };
 
@@ -431,15 +472,36 @@ export const getCurrentAssessment = async (req: AuthRequest, res: Response): Pro
   try {
     const { questionnaireId } = req.params;
     const userId = req.user?.userID;
-    const companyId = req.user?.companyid;
 
-    if (!userId || !questionnaireId || !companyId) {
+    console.log('🔍 getCurrentAssessment called:', { questionnaireId, userId });
+
+    if (!userId || !questionnaireId) {
       res.status(400).json({
         success: false,
         message: 'Missing required data'
       });
       return;
     }
+
+    // Get user's company information
+    const userCompanyQuery = `
+      SELECT c.companyid, c.companyname
+      FROM Company c
+      WHERE c.userid = $1
+    `;
+    
+    const userCompanyResult = await pool.query(userCompanyQuery, [userId]);
+    
+    if (userCompanyResult.rows.length === 0) {
+      console.log('❌ No company found for user:', userId);
+      res.status(404).json({
+        success: false,
+        message: 'No company associated with this user'
+      });
+      return;
+    }
+    
+    const companyId = userCompanyResult.rows[0].companyid;
 
     // Find assessment for this company and questionnaire
     const assessmentQuery = `
@@ -459,41 +521,60 @@ export const getCurrentAssessment = async (req: AuthRequest, res: Response): Pro
 
     const assessment = assessmentResult.rows[0];
     
-    // Get answered questions
+    // Get answered questions from database
     const answeredQuery = `
       SELECT questionid FROM Answer 
       WHERE assessmentid = $1
       ORDER BY questionid
     `;
     const answeredResult = await pool.query(answeredQuery, [assessment.assessmentid]);
-    const answeredQuestions = answeredResult.rows.map(row => row.questionid);
+    const answeredQuestions = answeredResult.rows.map((row: any) => row.questionid);
     
-    // Get total questions
-    const totalQuery = `
-      SELECT COUNT(*) as total_count FROM Question 
+    console.log('📋 Answered questions from database:', answeredQuestions);
+    
+    // Get all questions for this questionnaire
+    const questionsQuery = `
+      SELECT questionid FROM Question 
       WHERE questionnaireid = $1
+      ORDER BY questionid
     `;
-    const totalResult = await pool.query(totalQuery, [parseInt(questionnaireId)]);
-    const totalQuestions = parseInt(totalResult.rows[0].total_count);
+    const questionsResult = await pool.query(questionsQuery, [parseInt(questionnaireId)]);
+    const allQuestions = questionsResult.rows.map((row: any) => row.questionid);
+    
+    console.log('📝 All questions for questionnaire:', allQuestions);
+    
+    const totalQuestions = allQuestions.length;
 
     const progressPercentage = totalQuestions > 0 
       ? Math.round((answeredQuestions.length / totalQuestions) * 100 * 100) / 100
       : 0;
 
-    // For resume, start from next unanswered question
-    // Find the first question that hasn't been answered yet
+    // Find the first unanswered question
+    let nextQuestionId = null;
     let nextQuestionIndex = 0;
-    for (let i = 1; i <= totalQuestions; i++) {
-      if (!answeredQuestions.includes(i)) {
-        nextQuestionIndex = i - 1; // Convert to 0-based index
+    
+    for (let i = 0; i < allQuestions.length; i++) {
+      const questionId = allQuestions[i];
+      if (!answeredQuestions.includes(questionId)) {
+        nextQuestionId = questionId;
+        nextQuestionIndex = i; // 0-based index for frontend
         break;
       }
     }
     
-    // If all questions answered, stay at last question
-    if (answeredQuestions.length >= totalQuestions) {
-      nextQuestionIndex = totalQuestions - 1;
+    // If all questions answered, go to the last question
+    if (nextQuestionId === null && allQuestions.length > 0) {
+      nextQuestionId = allQuestions[allQuestions.length - 1];
+      nextQuestionIndex = allQuestions.length - 1;
     }
+    
+    console.log('🎯 Resume logic result:', {
+      nextQuestionId,
+      nextQuestionIndex,
+      answeredQuestionsCount: answeredQuestions.length,
+      totalQuestions,
+      allAnsweredQuestions: answeredQuestions
+    });
 
     console.log('📊 getCurrentAssessment result:', {
       assessmentId: assessment.assessmentid,
@@ -503,7 +584,8 @@ export const getCurrentAssessment = async (req: AuthRequest, res: Response): Pro
       answeredCount: answeredQuestions.length,
       totalQuestions,
       progressPercentage,
-      nextQuestionIndex
+      nextQuestionIndex,
+      nextQuestionId
     });
 
     res.status(200).json({
@@ -516,7 +598,8 @@ export const getCurrentAssessment = async (req: AuthRequest, res: Response): Pro
         progressPercentage,
         status: assessment.status,
         started_at: assessment.startdate,
-        nextQuestionIndex // Return next unanswered question index
+        nextQuestionIndex, // Return next unanswered question index (0-based)
+        nextQuestionId    // Return next unanswered question ID
       }
     });
 
@@ -561,7 +644,7 @@ export const getMyAssessments = async (req: AuthRequest, res: Response): Promise
     
     const result = await pool.query(assessmentsQuery, [companyId]);
     
-    const assessmentsData = result.rows.map(row => {
+    const assessmentsData = result.rows.map((row: any) => {
       const answeredCount = parseInt(row.answered_count) || 0;
       const totalQuestions = parseInt(row.total_count) || 24;
       
