@@ -79,7 +79,7 @@ export default function LandingPage() {
       <section
         className="px-8 py-12 bg-cover bg-center bg-no-repeat relative"
         style={{
-          backgroundColor: '#F6F6FF',
+          backgroundColor: "#F6F6FF",
         }}
       >
         <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-10 items-center">
@@ -206,7 +206,7 @@ export default function LandingPage() {
         id="features"
         className="px-8 py-12 bg-cover bg-center bg-no-repeat"
         style={{
-          backgroundColor: '#F6F6FF',
+          backgroundColor: "#F6F6FF",
         }}
       >
         <div className="max-w-6xl mx_auto"></div>
@@ -275,12 +275,12 @@ export default function LandingPage() {
                       }
                 }
                 transition={{ duration: 0.2 }}
-                className="bg-white/15 backdrop-blur-xl rounded-2xl p-6 shadow-xl border border-white/30 hover:bg-white/20 hover:border-white/40 hover:shadow-2xl transition"
+                className="bg-white rounded-2xl p-6 shadow-lg border border-gray-200 hover:shadow-xl hover:border-raimes-purple transition"
               >
-                <h3 className="text-lg font-semibold text-raimes-yellow drop-shadow-sm">
+                <h3 className="text-lg font-semibold text-raimes-purple">
                   {title}
                 </h3>
-                <p className="text-black mt-2 font-medium">{desc}</p>
+                <p className="text-gray-700 mt-2">{desc}</p>
               </motion.div>
             ))}
           </motion.div>
@@ -319,13 +319,13 @@ export default function LandingPage() {
             </motion.ul>
           </motion.div>
           <motion.div
-            className="bg-white/15 backdrop-blur-xl rounded-2xl p-6 border border-white/30 shadow-xl"
+            className="bg-white rounded-2xl p-6 border border-gray-200 shadow-lg"
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true, amount: 0.2 }}
             variants={scaleIn}
           >
-            <h3 className="text-black font-semibold drop-shadow-sm">
+            <h3 className="text-raimes-purple font-semibold">
               For Stakeholders
             </h3>
             <motion.div
@@ -338,12 +338,10 @@ export default function LandingPage() {
                 <motion.div
                   key={s}
                   variants={fadeInUp}
-                  className="bg-white/15 backdrop-blur-md rounded-xl p-4 border border-white/30 shadow-sm"
+                  className="bg-gray-50 rounded-xl p-4 border border-gray-200 shadow-sm"
                 >
-                  <div className="text-raimes-yellow font-semibold drop-shadow-sm">
-                    {s}
-                  </div>
-                  <div className="text-black text-sm mt-1">
+                  <div className="text-raimes-purple font-semibold">{s}</div>
+                  <div className="text-gray-700 text-sm mt-1">
                     Benchmark, monitor compliance, and verify claims with data.
                   </div>
                 </motion.div>

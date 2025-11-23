@@ -1,7 +1,7 @@
-import { Link, useNavigate } from 'react-router-dom';
-import { useState } from 'react';
-import { useAuth } from '../context/AuthContext';
-import logoFull from '../assets/logo-full.png';
+import { Link, useNavigate } from "react-router-dom";
+import { useState } from "react";
+import { useAuth } from "../context/AuthContext";
+import logoFull from "../assets/logo-full.png";
 
 export default function Navbar() {
   const { user, logout } = useAuth();
@@ -10,7 +10,7 @@ export default function Navbar() {
 
   const handleLogout = async () => {
     await logout();
-    navigate('/login');
+    navigate("/login");
   };
 
   return (
@@ -26,16 +26,26 @@ export default function Navbar() {
 
         <div className="flex items-center gap-12">
           {[
-            ['/dashboard','Dashboard'],
-            ['/assessment-results','Assessment Results'],
-            ['/questionnaires','Edit Questionnaire'],
-            ...(user?.role === 'admin' ? [
-              ['/admin/account-requests','Account Requests'],
-              ['/admin/add-account','Add Account']
-            ] : []),
-            ['/final-report','Final Report']
+            ["/dashboard", "Dashboard"],
+            ...(user?.role === "user"
+              ? [
+                  ["/my-assessments", "My Assessments"],
+                  ["/results", "Results"],
+                  ["/resources", "Resources"],
+                ]
+              : []),
+            ...(user?.role === "admin"
+              ? [
+                  ["/admin/account-requests", "Account Requests"],
+                  ["/admin/add-account", "Add Account"],
+                ]
+              : []),
+            ["/contact", "Contact"],
           ].map(([to, label]) => (
-            <div key={to} className="hover:transform hover:-translate-y-0.5 hover:scale-98 transition-all duration-200">
+            <div
+              key={to}
+              className="hover:transform hover:-translate-y-0.5 hover:scale-98 transition-all duration-200"
+            >
               <Link
                 to={to}
                 className="text-white font-semibold hover:text-raimes-yellow transition-colors"
@@ -68,26 +78,35 @@ export default function Navbar() {
               </div>
               <div className="flex flex-col items-start">
                 <span className="text-raimes-yellow font-semibold">
-                  Hello, {user?.username || 'User'}
+                  Hello, {user?.username || "User"}
                 </span>
                 <span className="text-white text-sm capitalize">
-                  {user?.role || 'User'}
+                  {user?.role || "User"}
                 </span>
               </div>
               <svg
-                className={`w-4 h-4 text-white transition-transform ${showDropdown ? 'rotate-180' : ''}`}
+                className={`w-4 h-4 text-white transition-transform ${
+                  showDropdown ? "rotate-180" : ""
+                }`}
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
               >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M19 9l-7 7-7-7"
+                />
               </svg>
             </button>
 
             {showDropdown && (
               <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg py-2 z-50 animate-dropdownFade">
                 <div className="px-4 py-2 border-b border-gray-200">
-                  <p className="text-sm font-semibold text-raimes-purple">{user?.username}</p>
+                  <p className="text-sm font-semibold text-raimes-purple">
+                    {user?.username}
+                  </p>
                   <p className="text-xs text-gray-600">{user?.email}</p>
                 </div>
                 <button
@@ -100,7 +119,12 @@ export default function Navbar() {
                     stroke="currentColor"
                     viewBox="0 0 24 24"
                   >
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
+                    />
                   </svg>
                   Logout
                 </button>

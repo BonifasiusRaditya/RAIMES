@@ -13,7 +13,7 @@ export default function DataValidation() {
         id: 101,
         company: "PT Tambang Sejahtera",
         submittedAt: "2025-10-21 14:22",
-        submittedBy: "op_trisna",
+        submittedBy: "admin_azka",
         status: "pending",
         flags: 1,
         region: "Kalimantan Timur",
@@ -22,7 +22,7 @@ export default function DataValidation() {
         id: 102,
         company: "PT Batu Energi",
         submittedAt: "2025-10-21 13:10",
-        submittedBy: "op_sari",
+        submittedBy: "admin_rivi",
         status: "pending",
         flags: 0,
         region: "Papua",
@@ -31,7 +31,7 @@ export default function DataValidation() {
         id: 103,
         company: "PT Mineral Nusantara",
         submittedAt: "2025-10-20 09:42",
-        submittedBy: "op_bayu",
+        submittedBy: "admin_jo",
         status: "in-review",
         flags: 2,
         region: "Sumatera Selatan",
@@ -40,7 +40,7 @@ export default function DataValidation() {
         id: 104,
         company: "PT Adhi Sukma",
         submittedAt: "2025-10-18 16:05",
-        submittedBy: "op_rama",
+        submittedBy: "admin_arya",
         status: "rejected",
         flags: 3,
         region: "Sulawesi Tengah",
@@ -49,7 +49,7 @@ export default function DataValidation() {
         id: 105,
         company: "PT Alam Lestari",
         submittedAt: "2025-10-18 08:27",
-        submittedBy: "op_dewi",
+        submittedBy: "admin_tony",
         status: "approved",
         flags: 0,
         region: "Kalimantan Selatan",
@@ -253,7 +253,7 @@ export default function DataValidation() {
                     Reviewer Notes
                   </h3>
                   <textarea
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-raimes-yellow"
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-raimes-yellow"
                     rows={4}
                     placeholder="Write your analysis, checks performed, references, etc."
                   />

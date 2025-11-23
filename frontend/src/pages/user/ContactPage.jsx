@@ -1,7 +1,9 @@
 import React, { useState, useMemo } from "react";
 // eslint-disable-next-line no-unused-vars
 import { motion, useReducedMotion } from "framer-motion";
+import Navbar from "../../components/Navbar";
 import Header from "../../components/Header";
+import { useAuth } from "../../context/AuthContext";
 import {
   Mail,
   MessageSquare,
@@ -11,6 +13,8 @@ import {
 } from "lucide-react";
 
 export default function ContactPage() {
+  // eslint-disable-next-line no-unused-vars
+  const { user } = useAuth();
   const prefersReducedMotion = useReducedMotion();
   const [formData, setFormData] = useState({
     name: "",
@@ -60,8 +64,8 @@ export default function ContactPage() {
           "Interested in partnership opportunities or research collaboration?",
         icon: Users,
         details: [
-          "Email: partnerships@raimes.io",
-          "Contact: Dr. Sarah Chen, Partnership Lead",
+          "Email: raimes@raimes.com",
+          "Contact: Arya Wiandra, Partnership Lead",
         ],
         color: "bg-purple-500/20",
         textColor: "text-purple-400",
@@ -70,7 +74,7 @@ export default function ContactPage() {
         title: "Service Inquiries",
         description: "Questions about implementation or technical support?",
         icon: MessageSquare,
-        details: ["Email: support@raimes.io", "Phone: +1 (555) 123-4567"],
+        details: ["Email: raimes@raimes.com", "Phone: +62 123-4567"],
         color: "bg-emerald-500/20",
         textColor: "text-emerald-400",
       },
@@ -78,7 +82,7 @@ export default function ContactPage() {
         title: "General Contact",
         description: "Have feedback or general inquiries for the RAIMES team?",
         icon: Mail,
-        details: ["Email: info@raimes.io", "Response time: Within 24 hours"],
+        details: ["Email: raimes@raimes.com", "Response time: Within 24 hours"],
         color: "bg-blue-500/20",
         textColor: "text-blue-400",
       },
@@ -168,15 +172,10 @@ export default function ContactPage() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <Header />
+      {user ? <Navbar /> : <Header />}
 
       {/* Hero Section */}
-      <section
-        className="px-8 py-12 bg-cover bg-center bg-no-repeat relative"
-        style={{
-          backgroundImage: `url('/MiningSite_BackgroundPictureNoBlur.svg')`,
-        }}
-      >
+      <section className="px-8 py-12 bg-raimes-purple">
         <div className="max-w-6xl mx-auto text-center">
           <motion.div
             initial="hidden"
@@ -186,13 +185,13 @@ export default function ContactPage() {
           >
             <motion.h1
               variants={fadeInUp}
-              className="text-5xl font-extrabold text-white leading-tight drop-shadow-lg"
+              className="text-5xl font-extrabold text-white leading-tight"
             >
               Get in <span className="text-raimes-yellow">Touch</span>
             </motion.h1>
             <motion.p
               variants={fadeInUp}
-              className="mt-4 text-gray-100 text-lg max-w-3xl mx-auto"
+              className="mt-4 text-white text-lg max-w-3xl mx-auto"
             >
               Have questions about RAIMES? We'd love to hear from you. Contact
               us for partnerships, support, or general inquiries.
@@ -202,7 +201,7 @@ export default function ContactPage() {
       </section>
 
       {/* Contact Info Cards */}
-      <section className="px-8 py-12 bg-white/10 backdrop-blur-lg">
+      <section className="px-8 py-12 bg-gray-50">
         <div className="max-w-6xl mx-auto">
           <motion.div
             className="grid grid-cols-1 md:grid-cols-3 gap-6"
@@ -211,8 +210,43 @@ export default function ContactPage() {
             viewport={{ once: true, amount: 0.2 }}
             variants={staggerChildren}
           >
-            {contactInfo.map(
-              ({ title, description, icon, details, color, textColor }) => (
+            {contactInfo.map(({ title, description, icon, details }, index) => {
+              // Removed unused variables color and textColor
+              {
+                user ? <Navbar /> : <Header useRootAnchors />;
+              } // Added useRootAnchors prop
+              const cardColors = [
+                {
+                  bg: "bg-raimes-purple",
+                  border: "border-raimes-purple",
+                  icon: "text-raimes-yellow",
+                  bullet: "text-raimes-yellow",
+                  title: "text-white",
+                  description: "text-gray-100",
+                  detail: "text-white",
+                },
+                {
+                  bg: "bg-raimes-purple",
+                  border: "border-raimes-purple",
+                  icon: "text-raimes-yellow",
+                  bullet: "text-raimes-yellow",
+                  title: "text-white",
+                  description: "text-gray-100",
+                  detail: "text-white",
+                },
+                {
+                  bg: "bg-raimes-purple",
+                  border: "border-raimes-purple",
+                  icon: "text-raimes-yellow",
+                  bullet: "text-raimes-yellow",
+                  title: "text-white",
+                  description: "text-gray-100",
+                  detail: "text-white",
+                },
+              ];
+              const cardColor = cardColors[index];
+
+              return (
                 <motion.div
                   key={title}
                   variants={fadeInUp}
@@ -225,10 +259,10 @@ export default function ContactPage() {
                         }
                   }
                   transition={{ duration: 0.2 }}
-                  className={`${color} backdrop-blur-xl rounded-2xl p-8 border border-white/30 shadow-lg transition hover:border-white/50`}
+                  className={`${cardColor.bg} rounded-2xl p-8 border ${cardColor.border} shadow-lg transition hover:shadow-xl`}
                 >
                   <motion.div
-                    className={`${textColor} mb-4`}
+                    className={`${cardColor.icon} mb-4`}
                     whileHover={
                       prefersReducedMotion ? {} : { scale: 1.1, rotate: 5 }
                     }
@@ -236,48 +270,51 @@ export default function ContactPage() {
                   >
                     {React.createElement(icon, { className: "w-8 h-8" })}
                   </motion.div>
-                  <h3 className="text-xl font-semibold text-white mb-2 drop-shadow-sm">
+                  <h3
+                    className={`text-xl font-semibold ${cardColor.title} mb-2`}
+                  >
                     {title}
                   </h3>
-                  <p className="text-gray-100 text-sm mb-4">{description}</p>
+                  <p className={`${cardColor.description} text-sm mb-4`}>
+                    {description}
+                  </p>
                   <div className="space-y-2">
                     {details.map((detail, idx) => (
                       <p
                         key={idx}
-                        className="text-white text-sm font-medium flex items-start"
+                        className={`${cardColor.detail} text-sm font-medium flex items-start`}
                       >
-                        <span className={`${textColor} mr-2 mt-0.5`}>•</span>
+                        <span className={`${cardColor.bullet} mr-2 mt-0.5`}>
+                          •
+                        </span>
                         <span>{detail}</span>
                       </p>
                     ))}
                   </div>
                 </motion.div>
-              )
-            )}
+              );
+            })}
           </motion.div>
         </div>
       </section>
 
       {/* Contact Form Section */}
-      <section className="px-8 py-12 bg-gray-50 bg-opacity-5">
+      <section className="px-8 py-12 bg-white">
         <div className="max-w-2xl mx-auto">
           <motion.div
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true, amount: 0.2 }}
             variants={scaleIn}
-            className="bg-white/15 backdrop-blur-xl rounded-2xl p-8 shadow-xl border border-white/30"
+            className="bg-white rounded-2xl p-8 shadow-xl border border-gray-200"
           >
             <motion.h2
               variants={fadeInUp}
-              className="text-3xl font-bold text-white mb-2 drop-shadow-md"
+              className="text-3xl font-bold text-gray-900 mb-2"
             >
               Send us a Message
             </motion.h2>
-            <motion.p
-              variants={fadeInUp}
-              className="text-gray-100 mb-8 drop-shadow-sm"
-            >
+            <motion.p variants={fadeInUp} className="text-gray-600 mb-8">
               We'll get back to you as soon as possible. Typically within 24
               hours.
             </motion.p>
@@ -287,14 +324,14 @@ export default function ContactPage() {
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0 }}
-                className="mb-6 p-4 bg-emerald-500/20 border border-emerald-500/50 rounded-lg flex items-start gap-3"
+                className="mb-6 p-4 bg-green-50 border border-green-300 rounded-lg flex items-start gap-3"
               >
-                <CheckCircle className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
+                <CheckCircle className="w-5 h-5 text-green-600 shrink-0 mt-0.5" />
                 <div>
-                  <p className="text-emerald-100 font-semibold">
+                  <p className="text-green-800 font-semibold">
                     Message sent successfully!
                   </p>
-                  <p className="text-emerald-50 text-sm">
+                  <p className="text-green-700 text-sm">
                     Thank you for reaching out. We'll be in touch soon.
                   </p>
                 </div>
@@ -306,10 +343,10 @@ export default function ContactPage() {
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0 }}
-                className="mb-6 p-4 bg-red-500/20 border border-red-500/50 rounded-lg flex items-start gap-3"
+                className="mb-6 p-4 bg-red-50 border border-red-300 rounded-lg flex items-start gap-3"
               >
-                <AlertCircle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
-                <p className="text-red-100 text-sm">{error}</p>
+                <AlertCircle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
+                <p className="text-red-800 text-sm">{error}</p>
               </motion.div>
             )}
 
@@ -322,7 +359,7 @@ export default function ContactPage() {
               >
                 {/* Name */}
                 <motion.div variants={fadeInUp}>
-                  <label className="block text-white font-semibold mb-2 drop-shadow-sm">
+                  <label className="block text-gray-900 font-semibold mb-2">
                     Name *
                   </label>
                   <input
@@ -331,13 +368,13 @@ export default function ContactPage() {
                     value={formData.name}
                     onChange={handleChange}
                     placeholder="Your full name"
-                    className="w-full px-4 py-3 bg-white/20 border border-white/30 rounded-lg text-white placeholder-gray-300 focus:outline-none focus:border-raimes-yellow focus:ring-2 focus:ring-raimes-yellow/50 transition"
+                    className="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:border-raimes-purple focus:ring-2 focus:ring-raimes-purple/50 transition"
                   />
                 </motion.div>
 
                 {/* Email */}
                 <motion.div variants={fadeInUp}>
-                  <label className="block text-white font-semibold mb-2 drop-shadow-sm">
+                  <label className="block text-gray-900 font-semibold mb-2">
                     Email *
                   </label>
                   <input
@@ -346,13 +383,13 @@ export default function ContactPage() {
                     value={formData.email}
                     onChange={handleChange}
                     placeholder="your.email@example.com"
-                    className="w-full px-4 py-3 bg-white/20 border border-white/30 rounded-lg text-white placeholder-gray-300 focus:outline-none focus:border-raimes-yellow focus:ring-2 focus:ring-raimes-yellow/50 transition"
+                    className="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:border-raimes-purple focus:ring-2 focus:ring-raimes-purple/50 transition"
                   />
                 </motion.div>
 
                 {/* Institution */}
                 <motion.div variants={fadeInUp}>
-                  <label className="block text-white font-semibold mb-2 drop-shadow-sm">
+                  <label className="block text-gray-900 font-semibold mb-2">
                     Institution / Company *
                   </label>
                   <input
@@ -361,26 +398,26 @@ export default function ContactPage() {
                     value={formData.institution}
                     onChange={handleChange}
                     placeholder="Your organization"
-                    className="w-full px-4 py-3 bg-white/20 border border-white/30 rounded-lg text-white placeholder-gray-300 focus:outline-none focus:border-raimes-yellow focus:ring-2 focus:ring-raimes-yellow/50 transition"
+                    className="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:border-raimes-purple focus:ring-2 focus:ring-raimes-purple/50 transition"
                   />
                 </motion.div>
 
                 {/* Inquiry Type */}
                 <motion.div variants={fadeInUp}>
-                  <label className="block text-white font-semibold mb-2 drop-shadow-sm">
+                  <label className="block text-gray-900 font-semibold mb-2">
                     Inquiry Type
                   </label>
                   <select
                     name="inquiryType"
                     value={formData.inquiryType}
                     onChange={handleChange}
-                    className="w-full px-4 py-3 bg-white/20 border border-white/30 rounded-lg text-white focus:outline-none focus:border-raimes-yellow focus:ring-2 focus:ring-raimes-yellow/50 transition"
+                    className="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:border-raimes-purple focus:ring-2 focus:ring-raimes-purple/50 transition"
                   >
                     {inquiryTypes.map((type) => (
                       <option
                         key={type}
                         value={type.toLowerCase().replace(/\s+/g, "-")}
-                        className="bg-gray-900"
+                        className="bg-white"
                       >
                         {type}
                       </option>
@@ -390,7 +427,7 @@ export default function ContactPage() {
 
                 {/* Message */}
                 <motion.div variants={fadeInUp}>
-                  <label className="block text-white font-semibold mb-2 drop-shadow-sm">
+                  <label className="block text-gray-900 font-semibold mb-2">
                     Message *
                   </label>
                   <textarea
@@ -399,7 +436,7 @@ export default function ContactPage() {
                     onChange={handleChange}
                     placeholder="Please tell us more about your inquiry..."
                     rows="5"
-                    className="w-full px-4 py-3 bg-white/20 border border-white/30 rounded-lg text-white placeholder-gray-300 focus:outline-none focus:border-raimes-yellow focus:ring-2 focus:ring-raimes-yellow/50 transition resize-none"
+                    className="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:border-raimes-purple focus:ring-2 focus:ring-raimes-purple/50 transition resize-none"
                   />
                 </motion.div>
 
@@ -434,14 +471,14 @@ export default function ContactPage() {
       </section>
 
       {/* FAQ or Additional Info */}
-      <section className="px-8 py-12 bg-white/10 backdrop-blur-lg">
+      <section className="px-8 py-12 bg-gray-50">
         <div className="max-w-3xl mx-auto">
           <motion.h2
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true, amount: 0.3 }}
             variants={fadeInUp}
-            className="text-2xl font-bold text-white text-center mb-8 drop-shadow-md"
+            className="text-2xl font-bold text-gray-900 text-center mb-8"
           >
             Quick Links
           </motion.h2>
@@ -475,12 +512,10 @@ export default function ContactPage() {
                 variants={fadeInUp}
                 whileHover={prefersReducedMotion ? {} : { scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
-                className="text-left p-4 bg-white/15 border border-white/30 rounded-lg hover:bg-white/20 hover:border-white/50 transition backdrop-blur-md"
+                className="text-left p-4 bg-white border border-gray-200 rounded-lg hover:shadow-lg hover:border-raimes-purple transition"
               >
-                <h3 className="font-semibold text-raimes-yellow drop-shadow-sm">
-                  {title}
-                </h3>
-                <p className="text-white text-sm mt-1">{description}</p>
+                <h3 className="font-semibold text-raimes-purple">{title}</h3>
+                <p className="text-gray-600 text-sm mt-1">{description}</p>
               </motion.button>
             ))}
           </motion.div>

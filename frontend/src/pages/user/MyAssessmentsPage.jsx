@@ -1,0 +1,339 @@
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import Navbar from "../../components/Navbar";
+import { assessmentService } from "../../services/assessmentService";
+
+export default function MyAssessmentsPage() {
+  const navigate = useNavigate();
+  const [assessments, setAssessments] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState("all"); // all, in-progress, completed, pending
+
+  useEffect(() => {
+    let isMounted = true;
+    const loadAssessments = async () => {
+      try {
+        setLoading(true);
+        const response = await assessmentService.getMyAssessments();
+        if (response?.success && Array.isArray(response.data)) {
+          // Map API data to UI shape
+          const mapped = response.data.map((a) => ({
+            id: a.id,
+            questionnaireId: a.questionnaireId,
+            title: a.questionnaireTitle || `Questionnaire ${a.questionnaireId}`,
+            status:
+              a.status === "in_progress"
+                ? "in-progress"
+                : a.status === "completed"
+                ? "completed"
+                : a.status || "in-progress",
+            progress: a.progressPercentage ?? 0,
+            startedAt: a.startDate ? a.startDate.substring(0, 10) : undefined,
+            completedAt: a.completionDate
+              ? a.completionDate.substring(0, 10)
+              : undefined,
+            totalQuestions: a.totalQuestions ?? 0,
+            answeredQuestions: a.answeredQuestions ?? 0,
+            score: a.finalScore ?? undefined,
+            lastUpdated: a.completionDate
+              ? a.completionDate.substring(0, 10)
+              : a.startDate
+              ? a.startDate.substring(0, 10)
+              : undefined,
+          }));
+          if (isMounted) setAssessments(mapped);
+        } else if (isMounted) {
+          setAssessments([]);
+        }
+      } catch (e) {
+        console.error("Failed to load assessments", e);
+        if (isMounted) setAssessments([]);
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    };
+    loadAssessments();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const filteredAssessments = assessments.filter((assessment) => {
+    if (filter === "all") return true;
+    if (filter === "in-progress") return assessment.status === "in-progress";
+    if (filter === "completed") return assessment.status === "completed";
+    if (filter === "pending") return assessment.status === "pending-review";
+    return true;
+  });
+
+  const getStatusBadge = (status) => {
+    const badges = {
+      "in-progress": "bg-blue-100 text-blue-800 border-blue-300",
+      completed: "bg-green-100 text-green-800 border-green-300",
+      "pending-review": "bg-yellow-100 text-yellow-800 border-yellow-300",
+      "not-started": "bg-gray-100 text-gray-800 border-gray-300",
+    };
+    const labels = {
+      "in-progress": "In Progress",
+      completed: "Completed",
+      "pending-review": "Pending Review",
+      "not-started": "Not Started",
+    };
+    return (
+      <span
+        className={`px-3 py-1 rounded-full text-xs font-semibold border ${badges[status]}`}
+      >
+        {labels[status]}
+      </span>
+    );
+  };
+
+  const handleContinueAssessment = (questionnaireId) => {
+    navigate(`/questionnaire/${questionnaireId}`);
+  };
+
+  const handleViewResults = (assessmentId) => {
+    navigate(`/assessment-result/${assessmentId}`);
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Navbar />
+        <div className="max-w-7xl mx-auto px-8 py-12">
+          <div className="flex items-center justify-center h-64">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+            <span className="ml-4 text-gray-600">Loading assessments...</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Group assessments by status for the new layout
+  const statusGroups = [
+    { key: "in-progress", title: "In Progress", dot: "bg-blue-500" },
+    { key: "pending-review", title: "Pending Review", dot: "bg-yellow-500" },
+    { key: "completed", title: "Completed", dot: "bg-green-500" },
+    { key: "not-started", title: "Not Started", dot: "bg-gray-400" },
+  ];
+  const grouped = filteredAssessments.reduce((acc, a) => {
+    acc[a.status] = acc[a.status] ? [...acc[a.status], a] : [a];
+    return acc;
+  }, {});
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <Navbar />
+
+      <div className="max-w-7xl mx-auto px-8 py-12">
+        <div className="mb-8">
+          <h1 className="text-4xl font-bold text-gray-900 mb-2">
+            My Assessments
+          </h1>
+          <p className="text-gray-600">
+            Track and manage your mining assessment questionnaires
+          </p>
+        </div>
+
+        {/* Stats */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+          <div className="bg-white rounded-lg shadow-sm p-6">
+            <div className="text-sm text-gray-500 mb-1">Total Assessments</div>
+            <div className="text-3xl font-bold text-raimes-purple">
+              {assessments.length}
+            </div>
+          </div>
+          <div className="bg-white rounded-lg shadow-sm p-6">
+            <div className="text-sm text-gray-500 mb-1">In Progress</div>
+            <div className="text-3xl font-bold text-blue-600">
+              {assessments.filter((a) => a.status === "in-progress").length}
+            </div>
+          </div>
+          <div className="bg-white rounded-lg shadow-sm p-6">
+            <div className="text-sm text-gray-500 mb-1">Completed</div>
+            <div className="text-3xl font-bold text-green-600">
+              {assessments.filter((a) => a.status === "completed").length}
+            </div>
+          </div>
+          <div className="bg-white rounded-lg shadow-sm p-6">
+            <div className="text-sm text-gray-500 mb-1">Pending Review</div>
+            <div className="text-3xl font-bold text-yellow-600">
+              {assessments.filter((a) => a.status === "pending-review").length}
+            </div>
+          </div>
+        </div>
+
+        {/* Filter */}
+        <div className="bg-white rounded-lg shadow-sm p-6 mb-10">
+          <div className="flex items-center gap-4">
+            <label className="text-sm font-medium text-gray-700">Filter:</label>
+            <div className="flex gap-2 flex-wrap">
+              {[
+                ["all", "All"],
+                ["in-progress", "In Progress"],
+                ["completed", "Completed"],
+                ["pending", "Pending Review"],
+              ].map(([value, label]) => (
+                <button
+                  key={value}
+                  onClick={() => setFilter(value)}
+                  className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                    filter === value
+                      ? "bg-raimes-purple text-white"
+                      : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Grouped Sections */}
+        <div className="space-y-12">
+          {statusGroups.map((group) => {
+            const list = grouped[group.key] || [];
+            if (!list.length) return null;
+            return (
+              <div key={group.key}>
+                <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center">
+                  <span
+                    className={`w-3 h-3 rounded-full mr-2 ${group.dot}`}
+                  ></span>
+                  {group.title}{" "}
+                  <span className="ml-2 text-sm text-gray-500">
+                    ({list.length})
+                  </span>
+                </h2>
+                <div className="space-y-4">
+                  {list.map((a) => (
+                    <div
+                      key={a.id}
+                      className="bg-white border border-gray-200 rounded-lg p-5 hover:shadow-md transition-shadow"
+                    >
+                      <div className="flex justify-between items-start mb-3">
+                        <div className="pr-4">
+                          <h3 className="text-lg font-semibold text-gray-900 mb-1">
+                            {a.title}
+                          </h3>
+                          <div className="text-xs text-gray-500 flex gap-4 flex-wrap">
+                            {a.startedAt && <span>Started: {a.startedAt}</span>}
+                            {a.lastUpdated && (
+                              <span>Updated: {a.lastUpdated}</span>
+                            )}
+                            {a.completedAt && (
+                              <span>Completed: {a.completedAt}</span>
+                            )}
+                          </div>
+                        </div>
+                        {getStatusBadge(a.status)}
+                      </div>
+                      {a.status !== "not-started" && (
+                        <div className="mb-3">
+                          <div className="flex justify-between text-xs text-gray-600 mb-1">
+                            <span>Progress</span>
+                            <span>{a.progress}%</span>
+                          </div>
+                          <div className="w-full bg-gray-200 rounded-full h-2">
+                            <div
+                              className="bg-raimes-purple h-2 rounded-full transition-all"
+                              style={{ width: `${a.progress}%` }}
+                            ></div>
+                          </div>
+                          <div className="mt-1 text-[11px] text-gray-500">
+                            {a.answeredQuestions}/{a.totalQuestions} answered
+                          </div>
+                        </div>
+                      )}
+                      {(a.score || a.grade) && (
+                        <div className="flex gap-6 text-sm mb-3">
+                          {a.score && (
+                            <div className="text-gray-700">
+                              Score:{" "}
+                              <span className="font-semibold text-raimes-purple">
+                                {a.score}
+                              </span>
+                            </div>
+                          )}
+                          {a.grade && (
+                            <div className="text-gray-700">
+                              Grade:{" "}
+                              <span className="font-semibold text-raimes-purple">
+                                {a.grade}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                      <div className="flex flex-wrap gap-2">
+                        {a.status === "in-progress" && (
+                          <button
+                            onClick={() =>
+                              handleContinueAssessment(a.questionnaireId)
+                            }
+                            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg"
+                          >
+                            Continue
+                          </button>
+                        )}
+                        {a.status === "not-started" && (
+                          <button
+                            onClick={() =>
+                              handleContinueAssessment(a.questionnaireId)
+                            }
+                            className="px-4 py-2 bg-raimes-purple hover:opacity-90 text-white text-sm font-medium rounded-lg"
+                          >
+                            Start
+                          </button>
+                        )}
+                        {a.status === "completed" && (
+                          <button
+                            onClick={() => handleViewResults(a.id)}
+                            className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg"
+                          >
+                            View Results
+                          </button>
+                        )}
+                        {a.status === "pending-review" && (
+                          <button
+                            disabled
+                            className="px-4 py-2 bg-gray-300 text-gray-600 text-sm font-medium rounded-lg cursor-not-allowed"
+                          >
+                            Awaiting Review
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {filteredAssessments.length === 0 && (
+          <div className="bg-white rounded-lg shadow-sm p-12 text-center mt-8">
+            <svg
+              className="mx-auto h-12 w-12 text-gray-400 mb-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+              />
+            </svg>
+            <p className="text-gray-500">
+              No assessments found for this filter
+            </p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

@@ -617,12 +617,25 @@ export const getCurrentAssessment = async (req: AuthRequest, res: Response): Pro
 export const getMyAssessments = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const userId = req.user?.userID;
-    const companyId = req.user?.companyid;
 
-    if (!userId || !companyId) {
-      res.status(401).json({ success: false, message: 'Unauthorized' });
+    if (!userId) {
+      res.status(401).json({ success: false, message: 'Unauthorized: missing user context' });
       return;
     }
+
+    // Derive companyId from userId (token does not include companyid)
+    const companyLookupQuery = `
+      SELECT c.companyid
+      FROM Company c
+      WHERE c.userid = $1
+      LIMIT 1
+    `;
+    const companyLookupResult = await pool.query(companyLookupQuery, [userId]);
+    if (companyLookupResult.rows.length === 0) {
+      res.status(404).json({ success: false, message: 'No company associated with this user' });
+      return;
+    }
+    const companyId = companyLookupResult.rows[0].companyid;
 
     // Get assessments for this company
     const assessmentsQuery = `
