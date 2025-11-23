@@ -166,11 +166,11 @@ const CompanyDashboard = () => {
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <div className="bg-white rounded-lg shadow p-6">
+          <div className="bg-white rounded-lg shadow-md border-l-4 border-raimes-purple p-6">
             <div className="flex items-center">
-              <div className="shrink-0 bg-blue-100 rounded-md p-3">
+              <div className="shrink-0 bg-purple-100 rounded-md p-3">
                 <svg
-                  className="h-6 w-6 text-blue-600"
+                  className="h-6 w-6 text-raimes-purple"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -194,11 +194,11 @@ const CompanyDashboard = () => {
             </div>
           </div>
 
-          <div className="bg-white rounded-lg shadow p-6">
+          <div className="bg-white rounded-lg shadow-md border-l-4 border-raimes-yellow p-6">
             <div className="flex items-center">
               <div className="shrink-0 bg-yellow-100 rounded-md p-3">
                 <svg
-                  className="h-6 w-6 text-yellow-600"
+                  className="h-6 w-6 text-raimes-yellow"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -220,7 +220,7 @@ const CompanyDashboard = () => {
             </div>
           </div>
 
-          <div className="bg-white rounded-lg shadow p-6">
+          <div className="bg-white rounded-lg shadow-md border-l-4 border-blue-500 p-6">
             <div className="flex items-center">
               <div className="shrink-0 bg-blue-100 rounded-md p-3">
                 <svg
@@ -246,7 +246,7 @@ const CompanyDashboard = () => {
             </div>
           </div>
 
-          <div className="bg-white rounded-lg shadow p-6">
+          <div className="bg-white rounded-lg shadow-md border-l-4 border-green-500 p-6">
             <div className="flex items-center">
               <div className="shrink-0 bg-green-100 rounded-md p-3">
                 <svg
@@ -274,9 +274,9 @@ const CompanyDashboard = () => {
         </div>
 
         {/* Available Questionnaires */}
-        <div className="bg-white rounded-lg shadow mb-8">
-          <div className="px-6 py-4 border-b border-gray-200">
-            <h2 className="text-xl font-bold text-gray-900">
+        <div className="bg-white rounded-lg shadow-md border-t-4 border-raimes-purple mb-8">
+          <div className="px-6 py-4 border-b border-gray-200 bg-purple-50">
+            <h2 className="text-xl font-bold text-raimes-purple">
               Available Assessments
             </h2>
             <p className="text-sm text-gray-600 mt-1">
@@ -317,7 +317,7 @@ const CompanyDashboard = () => {
                   return (
                     <div
                       key={questionnaire.id}
-                      className="border border-gray-200 rounded-lg p-6 hover:shadow-lg transition-shadow"
+                      className="border-2 border-purple-200 rounded-lg p-6 hover:shadow-xl hover:border-raimes-purple transition-all"
                     >
                       <h3 className="text-lg font-semibold text-gray-900 mb-2">
                         {questionnaire.title}
@@ -386,8 +386,8 @@ const CompanyDashboard = () => {
                         onClick={() => handleStartAssessment(questionnaire.id)}
                         className={`w-full px-4 py-2 rounded-lg transition-colors font-medium ${
                           existingAssessment
-                            ? "bg-blue-600 text-white hover:bg-blue-700"
-                            : "bg-green-600 text-white hover:bg-green-700"
+                            ? "bg-raimes-purple text-white hover:opacity-90"
+                            : "bg-raimes-yellow text-gray-900 hover:opacity-90"
                         }`}
                       >
                         {existingAssessment
@@ -403,9 +403,11 @@ const CompanyDashboard = () => {
         </div>
 
         {/* My Assessments (In Progress & Completed) */}
-        <div className="bg-white rounded-lg shadow">
-          <div className="px-6 py-4 border-b border-gray-200">
-            <h2 className="text-xl font-bold text-gray-900">My Assessments</h2>
+        <div className="bg-white rounded-lg shadow-md border-t-4 border-raimes-yellow">
+          <div className="px-6 py-4 border-b border-gray-200 bg-yellow-50">
+            <h2 className="text-xl font-bold text-raimes-yellow">
+              My Assessments
+            </h2>
             <p className="text-sm text-gray-600 mt-1">
               View and continue your assessments
             </p>
@@ -438,24 +440,24 @@ const CompanyDashboard = () => {
             ) : (
               <div className="overflow-x-auto">
                 <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
+                  <thead className="bg-purple-50">
                     <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-6 py-3 text-left text-xs font-medium text-raimes-purple uppercase tracking-wider">
                         Assessment
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-6 py-3 text-left text-xs font-medium text-raimes-purple uppercase tracking-wider">
                         Status
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-6 py-3 text-left text-xs font-medium text-raimes-purple uppercase tracking-wider">
                         Progress
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-6 py-3 text-left text-xs font-medium text-raimes-purple uppercase tracking-wider">
                         Score
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-6 py-3 text-left text-xs font-medium text-raimes-purple uppercase tracking-wider">
                         Started
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-6 py-3 text-left text-xs font-medium text-raimes-purple uppercase tracking-wider">
                         Actions
                       </th>
                     </tr>
@@ -487,7 +489,7 @@ const CompanyDashboard = () => {
                           <div className="flex items-center">
                             <div className="w-full bg-gray-200 rounded-full h-2 mr-2">
                               <div
-                                className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                                className="bg-raimes-purple h-2 rounded-full transition-all duration-300"
                                 style={{
                                   width: `${
                                     assessment.progressPercentage || 0
@@ -515,7 +517,7 @@ const CompanyDashboard = () => {
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                           {assessment.status === "completed" ? (
                             <button
-                              className="text-green-600 hover:text-green-900 font-medium"
+                              className="text-raimes-purple hover:opacity-80 font-medium"
                               onClick={() =>
                                 alert("View results feature coming soon!")
                               }
@@ -524,7 +526,7 @@ const CompanyDashboard = () => {
                             </button>
                           ) : (
                             <button
-                              className="text-blue-600 hover:text-blue-900 font-medium"
+                              className="text-raimes-yellow hover:opacity-80 font-medium"
                               onClick={() =>
                                 (window.location.href = `/questionnaire/${assessment.questionnaireId}`)
                               }
@@ -543,11 +545,11 @@ const CompanyDashboard = () => {
         </div>
 
         {/* Help Section */}
-        <div className="mt-8 bg-blue-50 border border-blue-200 rounded-lg p-6">
+        <div className="mt-8 bg-purple-50 border-2 border-raimes-purple rounded-lg p-6">
           <div className="flex">
             <div className="shrink-0">
               <svg
-                className="h-6 w-6 text-blue-600"
+                className="h-6 w-6 text-raimes-purple"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -561,8 +563,10 @@ const CompanyDashboard = () => {
               </svg>
             </div>
             <div className="ml-3">
-              <h3 className="text-sm font-medium text-blue-800">Need Help?</h3>
-              <div className="mt-2 text-sm text-blue-700">
+              <h3 className="text-sm font-medium text-raimes-purple">
+                Need Help?
+              </h3>
+              <div className="mt-2 text-sm text-gray-700">
                 <p>
                   If you need assistance with your assessment or have questions,
                   please contact your administrator or check the help

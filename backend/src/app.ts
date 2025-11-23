@@ -6,6 +6,7 @@ import questionRoutes from './routes/questionRoutes.js';
 import questionnaireRoutes from './routes/questionnaireRoutes.js';
 import registrationRoutes from './routes/registrationRoutes.js';
 import assessmentRoutes from './routes/assessmentRoutes.js';
+import contactRoutes from './routes/contactRoutes.js';
 
 // Load environment variables
 dotenv.config();
@@ -60,6 +61,9 @@ app.use('/api/questions', questionRoutes);
 
 // Assessment routes
 app.use('/api/assessments', assessmentRoutes);
+
+// Contact routes
+app.use('/api/contact', contactRoutes);
 
 // 404 handler
 app.use((req: Request, res: Response) => {

@@ -35,6 +35,9 @@ const AddAccountPage = lazy(() => import("./pages/admin/AddAccountPage"));
 const MyAssessmentsPage = lazy(() => import("./pages/user/MyAssessmentsPage"));
 const ResultsPage = lazy(() => import("./pages/user/ResultsPage"));
 const ResourcesPage = lazy(() => import("./pages/user/ResourcesPage"));
+const AssessmentDetailPage = lazy(() =>
+  import("./pages/user/AssessmentDetailPage")
+);
 import { useAuth } from "./context/AuthContext";
 
 // Loading component
@@ -131,6 +134,14 @@ function App() {
                 element={
                   <ProtectedRoute>
                     <ResultsPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/assessment-result/:assessmentId"
+                element={
+                  <ProtectedRoute>
+                    <AssessmentDetailPage />
                   </ProtectedRoute>
                 }
               />

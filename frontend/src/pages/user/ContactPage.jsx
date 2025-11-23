@@ -139,32 +139,41 @@ export default function ContactPage() {
     }
 
     setLoading(true);
+    setError("");
+
     try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-
-      // Here you would call your actual API endpoint
-      // const response = await fetch("/api/contact/inquiry", {
-      //   method: "POST",
-      //   headers: { "Content-Type": "application/json" },
-      //   body: JSON.stringify(formData),
-      // });
-
-      setSubmitted(true);
-      setFormData({
-        name: "",
-        email: "",
-        institution: "",
-        inquiryType: "general",
-        message: "",
+      const response = await fetch("http://localhost:3000/api/contact", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(formData),
       });
 
-      // Reset success message after 5 seconds
-      setTimeout(() => {
-        setSubmitted(false);
-      }, 5000);
-    } catch {
-      setError("Failed to send message. Please try again.");
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        setSubmitted(true);
+        setFormData({
+          name: "",
+          email: "",
+          institution: "",
+          inquiryType: "general",
+          message: "",
+        });
+
+        // Reset success message after 5 seconds
+        setTimeout(() => {
+          setSubmitted(false);
+        }, 5000);
+      } else {
+        setError(data.message || "Failed to send message. Please try again.");
+      }
+    } catch (err) {
+      console.error("Contact form error:", err);
+      setError(
+        "Failed to send message. Please check your connection and try again."
+      );
     } finally {
       setLoading(false);
     }

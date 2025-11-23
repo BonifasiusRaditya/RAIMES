@@ -19,6 +19,11 @@ function QuestionnairePage() {
   const [submitting, setSubmitting] = useState(false);
   const [assessmentId, setAssessmentId] = useState(null);
   const [progressPercentage, setProgressPercentage] = useState(0);
+  const [notification, setNotification] = useState({
+    show: false,
+    message: "",
+    type: "",
+  });
 
   const currentQuestion = questions[currentQuestionIndex];
   const totalQuestions = questions.length;
@@ -214,8 +219,15 @@ function QuestionnairePage() {
         const hasFiles = files[currentQuestionId]?.length > 0;
 
         if (!hasAnswer && !hasFiles) {
-          alert(
-            "Please provide an answer or upload supporting evidence before continuing."
+          setNotification({
+            show: true,
+            message:
+              "Please provide an answer or upload supporting evidence before saving.",
+            type: "warning",
+          });
+          setTimeout(
+            () => setNotification({ show: false, message: "", type: "" }),
+            5000
           );
           return;
         }
@@ -233,23 +245,53 @@ function QuestionnairePage() {
         if (progressResponse.success) {
           const newProgress = progressResponse.data.progressPercentage || 0;
           setProgressPercentage(newProgress);
-          alert(`Answer saved! Progress: ${newProgress}%`);
+          setNotification({
+            show: true,
+            message: `Progress saved successfully! You can continue later. (${newProgress}% completed)`,
+            type: "success",
+          });
+          setTimeout(
+            () => setNotification({ show: false, message: "", type: "" }),
+            4000
+          );
 
-          console.log("📊 Progress updated:", {
+          console.log("📊 Progress saved:", {
             progressPercentage: newProgress,
             answeredQuestions:
               progressResponse.data.answeredQuestions?.length || 0,
             totalQuestions: progressResponse.data.totalQuestions || 10,
           });
 
-          // Auto move to next question
-          handleNextQuestion();
+          // Don't auto move - let user decide when to continue
+          // User can use "Next Question" button or return later
         } else {
-          alert("Failed to save progress. Please try again.");
+          setNotification({
+            show: true,
+            message: `Failed to save: ${
+              progressResponse.message || "Please try again."
+            }`,
+            type: "error",
+          });
+          setTimeout(
+            () => setNotification({ show: false, message: "", type: "" }),
+            5000
+          );
         }
       } catch (error) {
         console.error("Error saving progress:", error);
-        alert("Failed to save progress. Please try again.");
+        setNotification({
+          show: true,
+          message: `Save failed: ${
+            error.response?.data?.message ||
+            error.message ||
+            "Please try again."
+          }`,
+          type: "error",
+        });
+        setTimeout(
+          () => setNotification({ show: false, message: "", type: "" }),
+          5000
+        );
       } finally {
         setSubmitting(false);
       }
@@ -322,21 +364,67 @@ function QuestionnairePage() {
     try {
       setSubmitting(true);
 
-      const submissionData = {
-        questionnaireId,
-        answers,
-        submittedAt: new Date().toISOString(),
-      };
+      // Check if all questions have been answered
+      const unansweredQuestions = questions.filter((q) => {
+        const qId = q.questionID || q.questionid || q.id;
+        const hasAnswer = answers[qId]?.trim();
+        const hasFiles = files[qId]?.length > 0;
+        return !hasAnswer && !hasFiles;
+      });
 
-      const response = await questionService.submitAnswers(submissionData);
+      if (unansweredQuestions.length > 0) {
+        setNotification({
+          show: true,
+          message: `Please answer all questions. ${unansweredQuestions.length} question(s) remaining.`,
+          type: "warning",
+        });
+        setTimeout(
+          () => setNotification({ show: false, message: "", type: "" }),
+          5000
+        );
+        setSubmitting(false);
+        return;
+      }
+
+      // Use the new completeAssessment endpoint
+      const response = await assessmentService.completeAssessment(
+        questionnaireId
+      );
 
       if (response.success) {
-        alert("Assessment submitted successfully!");
-        navigate("/dashboard");
+        setNotification({
+          show: true,
+          message: `Assessment completed successfully! Score: ${response.data.finalScore}%. Redirecting...`,
+          type: "success",
+        });
+        setTimeout(() => {
+          setNotification({ show: false, message: "", type: "" });
+          navigate("/results");
+        }, 2000);
+      } else {
+        setNotification({
+          show: true,
+          message: `Submission failed: ${response.message || "Unknown error"}`,
+          type: "error",
+        });
+        setTimeout(
+          () => setNotification({ show: false, message: "", type: "" }),
+          5000
+        );
       }
     } catch (error) {
       console.error("❌ Error submitting assessment:", error);
-      alert("Failed to submit assessment. Please try again.");
+      setNotification({
+        show: true,
+        message: `Failed to submit assessment: ${
+          error.response?.data?.message || error.message || "Please try again."
+        }`,
+        type: "error",
+      });
+      setTimeout(
+        () => setNotification({ show: false, message: "", type: "" }),
+        5000
+      );
     } finally {
       setSubmitting(false);
     }
@@ -407,8 +495,121 @@ function QuestionnairePage() {
     <div className="min-h-screen bg-gray-50">
       <Navbar />
 
+      {/* Notification */}
+      {notification.show && (
+        <div className="fixed top-0 left-1/2 transform -translate-x-1/2 z-50 w-full max-w-md px-4 pt-4 animate-slide-down">
+          <div
+            className={`rounded-lg shadow-xl p-4 ${
+              notification.type === "success"
+                ? "bg-green-50 border-l-4 border-green-500"
+                : notification.type === "error"
+                ? "bg-red-50 border-l-4 border-red-500"
+                : "bg-yellow-50 border-l-4 border-yellow-500"
+            }`}
+          >
+            <div className="flex items-start">
+              <div className="flex-shrink-0">
+                {notification.type === "success" && (
+                  <svg
+                    className="h-5 w-5 text-green-500"
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                )}
+                {notification.type === "error" && (
+                  <svg
+                    className="h-5 w-5 text-red-500"
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                )}
+                {notification.type === "warning" && (
+                  <svg
+                    className="h-5 w-5 text-yellow-500"
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                )}
+              </div>
+              <div className="ml-3 flex-1">
+                <p
+                  className={`text-sm font-medium ${
+                    notification.type === "success"
+                      ? "text-green-800"
+                      : notification.type === "error"
+                      ? "text-red-800"
+                      : "text-yellow-800"
+                  }`}
+                >
+                  {notification.message}
+                </p>
+              </div>
+              <button
+                onClick={() =>
+                  setNotification({ show: false, message: "", type: "" })
+                }
+                className="ml-4 flex-shrink-0"
+              >
+                <svg
+                  className="h-4 w-4 text-gray-400 hover:text-gray-600"
+                  fill="currentColor"
+                  viewBox="0 0 20 20"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="max-w-6xl mx-auto px-8 py-12">
         <div className="bg-white rounded-lg shadow-sm p-12">
+          {/* Exit Button */}
+          <div className="mb-6">
+            <button
+              onClick={() => navigate("/dashboard")}
+              className="flex items-center gap-2 px-4 py-2 bg-raimes-purple text-white rounded-lg hover:opacity-90 transition-all"
+            >
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M10 19l-7-7m0 0l7-7m-7 7h18"
+                />
+              </svg>
+              <span className="font-medium">Exit Questionnaire</span>
+            </button>
+          </div>
+
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
             {questionnaire?.title || "Assessment Questionnaire"}
           </h1>
@@ -483,7 +684,7 @@ function QuestionnairePage() {
                           handleAnswerChange(currentQuestionId, e.target.value)
                         }
                         placeholder="Please provide a detailed answer to the question above..."
-                        className="w-full h-64 p-4 border border-gray-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        className="w-full h-64 p-4 border border-gray-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 placeholder-gray-400"
                         required
                       />
                       <div className="mt-2 text-sm text-gray-500">
@@ -511,7 +712,7 @@ function QuestionnairePage() {
                             )
                           }
                           placeholder="Please provide a detailed answer to the question above..."
-                          className="w-full h-64 p-4 border border-gray-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                          className="w-full h-64 p-4 border border-gray-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 placeholder-gray-400"
                           required
                         />
                         <div className="mt-2 text-sm text-gray-500">
@@ -527,22 +728,18 @@ function QuestionnairePage() {
                       {[
                         { value: 0, label: "Still in planning (0%)" },
                         {
-                          value: 20,
+                          value: 25,
                           label:
-                            "More detailed planning, not yet implemented (20%)",
+                            "More detailed planning, not yet implemented (25%)",
                         },
                         {
-                          value: 40,
-                          label: "Initial implementation started (40%)",
+                          value: 50,
+                          label: "Initial implementation started (50%)",
                         },
                         {
-                          value: 60,
-                          label: "Implementation partially underway (60%)",
-                        },
-                        {
-                          value: 80,
+                          value: 75,
                           label:
-                            "Implementation nearly complete, benefits emerging (80%)",
+                            "Implementation mostly complete, benefits emerging (75%)",
                         },
                         {
                           value: 100,
@@ -582,7 +779,7 @@ function QuestionnairePage() {
                       ))}
                       <div className="text-xs text-gray-500 mt-2">
                         Select the appropriate maturity level. Index 1 = still
-                        planning (0%), Index 6 = fully implemented with tangible
+                        planning (0%), Index 5 = fully implemented with tangible
                         benefits (100%).
                       </div>
                     </div>
@@ -730,22 +927,36 @@ function QuestionnairePage() {
                 <div className="flex gap-3">
                   <button
                     onClick={handleSaveAndContinue}
-                    className="bg-green-600 hover:bg-green-700 text-white font-semibold px-6 py-3 rounded-lg flex items-center gap-2 transition-colors"
+                    disabled={submitting}
+                    className={`font-semibold px-6 py-3 rounded-lg flex items-center gap-2 transition-colors ${
+                      submitting
+                        ? "bg-gray-400 text-gray-200 cursor-not-allowed"
+                        : "bg-green-600 hover:bg-green-700 text-white"
+                    }`}
                   >
-                    <svg
-                      className="w-5 h-5"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"
-                      />
-                    </svg>
-                    Save & Continue
+                    {submitting ? (
+                      <>
+                        <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                        Saving...
+                      </>
+                    ) : (
+                      <>
+                        <svg
+                          className="w-5 h-5"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"
+                          />
+                        </svg>
+                        Save Progress
+                      </>
+                    )}
                   </button>
 
                   {currentQuestionIndex < totalQuestions - 1 ? (

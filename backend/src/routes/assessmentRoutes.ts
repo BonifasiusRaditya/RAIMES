@@ -5,7 +5,10 @@ import {
   getAllAssessmentsWithProgress,
   getCurrentAssessment,
   getMyAssessments,
-  updateCurrentPosition
+  updateCurrentPosition,
+  getAssessmentDetail,
+  getAssessmentResults,
+  completeAssessment
 } from '../controllers/assessmentController.js';
 import { authenticateToken } from '../middleware/auth.js';
 
@@ -35,8 +38,17 @@ router.put('/position/:questionnaireId', updateCurrentPosition);
 // Save progress (called when "Save & Continue" is clicked)
 router.post('/save-progress', saveProgress);
 
+// Complete assessment (called when "Complete Assessment" is clicked)
+router.post('/complete', completeAssessment);
+
 // Get user's assessments
 router.get('/my-assessments', getMyAssessments);
+
+// Get assessment detail by ID
+router.get('/detail/:assessmentId', getAssessmentDetail);
+
+// Get summarized assessment results by ID
+router.get('/:assessmentId/results', getAssessmentResults);
 
 // Admin/Auditor routes - get all assessments with progress
 router.get('/all', getAllAssessmentsWithProgress);

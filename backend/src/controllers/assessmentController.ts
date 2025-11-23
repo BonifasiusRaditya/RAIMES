@@ -252,20 +252,30 @@ export const saveProgress = async (req: AuthRequest, res: Response): Promise<voi
     const answerResult = await pool.query(upsertAnswerQuery, [assessment.assessmentid, questionIdNum, answer || '']);
     const answerId = answerResult.rows[0].answerid;
     
-    // Get current progress counts
+    // Get current progress counts with detailed info
     const progressQuery = `
       SELECT 
         COUNT(a.answerid) as answered_count,
-        (SELECT COUNT(*) FROM Question WHERE questionnaireid = $2) as total_count
+        (SELECT COUNT(*) FROM Question WHERE questionnaireid = $2) as total_count,
+        (SELECT jsonb_agg(q.questionid ORDER BY q.questionid) FROM Question q WHERE q.questionnaireid = $2) as all_question_ids,
+        (SELECT jsonb_agg(a2.questionid ORDER BY a2.questionid) FROM Answer a2 WHERE a2.assessmentid = $1) as answered_question_ids
       FROM Answer a
       WHERE a.assessmentid = $1
     `;
     
     const progressResult = await pool.query(progressQuery, [assessment.assessmentid, questionnaireIdNum]);
-    const { answered_count, total_count } = progressResult.rows[0];
+    const { answered_count, total_count, all_question_ids, answered_question_ids } = progressResult.rows[0];
     
     const answeredCount = parseInt(answered_count);
     const totalQuestions = parseInt(total_count);
+    
+    console.log('📊 Progress Details:', {
+      answeredCount,
+      totalQuestions,
+      allQuestionIds: all_question_ids,
+      answeredQuestionIds: answered_question_ids,
+      missingQuestions: all_question_ids ? all_question_ids.filter(id => !answered_question_ids?.includes(id)) : []
+    });
     
     // Calculate precise progress percentage
     const progressPercentage = totalQuestions > 0 
@@ -689,6 +699,446 @@ export const getMyAssessments = async (req: AuthRequest, res: Response): Promise
     res.status(500).json({
       success: false,
       message: 'Error retrieving assessments',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+};
+
+  // Get detailed assessment with all questions and answers
+  export const getAssessmentDetail = async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      const { assessmentId } = req.params;
+      const userId = req.user?.userID;
+
+      if (!userId || !assessmentId) {
+        res.status(400).json({
+          success: false,
+          message: 'Missing required data'
+        });
+        return;
+      }
+
+      // Get user's company
+      const userCompanyQuery = `
+        SELECT c.companyid, c.companyname
+        FROM Company c
+        WHERE c.userid = $1
+      `;
+    
+      const userCompanyResult = await pool.query(userCompanyQuery, [userId]);
+    
+      if (userCompanyResult.rows.length === 0) {
+        res.status(404).json({
+          success: false,
+          message: 'No company associated with this user'
+        });
+        return;
+      }
+    
+      const companyId = userCompanyResult.rows[0].companyid;
+
+      // Get assessment details
+      const assessmentQuery = `
+        SELECT 
+          a.assessmentid,
+          a.questionnaireid,
+          a.status,
+          a.startdate,
+          a.completiondate,
+          a.finalscore,
+          c.companyname,
+          q.title as questionnaire_title,
+          q.description as questionnaire_description
+        FROM Assessment a
+        LEFT JOIN Company c ON a.companyid = c.companyid
+        LEFT JOIN Questionnaire q ON a.questionnaireid = q.questionnaireid
+        WHERE a.assessmentid = $1 AND a.companyid = $2
+      `;
+    
+      const assessmentResult = await pool.query(assessmentQuery, [parseInt(assessmentId), companyId]);
+
+      if (assessmentResult.rows.length === 0) {
+        res.status(404).json({
+          success: false,
+          message: 'Assessment not found or access denied'
+        });
+        return;
+      }
+
+      const assessment = assessmentResult.rows[0];
+
+      // Get all questions and answers for this assessment
+      const questionsQuery = `
+        SELECT 
+          q.questionid,
+          q.questiontext,
+          q.category,
+          q.questiontype,
+          q.options,
+          q.weight,
+          q.evidencerequired,
+          a.answerid,
+          a.response,
+          a.evidencepath,
+          a.score
+        FROM Question q
+        LEFT JOIN Answer a ON q.questionid = a.questionid AND a.assessmentid = $1
+        WHERE q.questionnaireid = $2
+        ORDER BY q.questionid
+      `;
+    
+      const questionsResult = await pool.query(questionsQuery, [
+        parseInt(assessmentId),
+        assessment.questionnaireid
+      ]);
+
+      // Group questions by category
+      const questionsByCategory: Record<string, any[]> = {};
+      let totalAnswered = 0;
+      let totalScore = 0;
+      let maxScore = 0;
+
+      questionsResult.rows.forEach((row: any) => {
+        const category = row.category || 'General';
+      
+        if (!questionsByCategory[category]) {
+          questionsByCategory[category] = [];
+        }
+
+        questionsByCategory[category].push({
+          questionId: row.questionid,
+          questionText: row.questiontext,
+          questionType: row.questiontype,
+          options: row.options,
+          weight: row.weight,
+          evidenceRequired: row.evidencerequired,
+          answer: row.response,
+          evidencePath: row.evidencepath,
+          score: row.score,
+          answered: !!row.answerid
+        });
+
+        if (row.answerid) {
+          totalAnswered++;
+          if (row.score !== null) {
+            totalScore += parseFloat(row.score);
+          }
+        }
+      
+        maxScore += parseInt(row.weight) || 10;
+      });
+
+      // Calculate progress
+      const totalQuestions = questionsResult.rows.length;
+      const progressPercentage = totalQuestions > 0 
+        ? Math.round((totalAnswered / totalQuestions) * 100)
+        : 0;
+
+      res.status(200).json({
+        success: true,
+        data: {
+          assessmentId: assessment.assessmentid,
+          questionnaireId: assessment.questionnaireid,
+          questionnaireTitle: assessment.questionnaire_title || `Assessment ${assessment.questionnaireid}`,
+          questionnaireDescription: assessment.questionnaire_description,
+          companyName: assessment.companyname,
+          status: assessment.status,
+          startDate: assessment.startdate,
+          completionDate: assessment.completiondate,
+          finalScore: assessment.finalscore,
+          progressPercentage,
+          totalQuestions,
+          answeredQuestions: totalAnswered,
+          calculatedScore: maxScore > 0 ? Math.round((totalScore / maxScore) * 100) : 0,
+          questionsByCategory
+        }
+      });
+
+    } catch (error) {
+      console.error('Error getting assessment detail:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error retrieving assessment detail',
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  };
+
+// Get summarized assessment results (aggregated per category, no per-question list)
+export const getAssessmentResults = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { assessmentId } = req.params;
+    const userId = req.user?.userID;
+
+    if (!userId || !assessmentId) {
+      res.status(400).json({ success: false, message: 'Missing required data' });
+      return;
+    }
+
+    // Resolve company from user
+    const companyQuery = `SELECT companyid FROM Company WHERE userid = $1 LIMIT 1`;
+    const companyResult = await pool.query(companyQuery, [userId]);
+    if (companyResult.rows.length === 0) {
+      res.status(404).json({ success: false, message: 'No company associated with user' });
+      return;
+    }
+    const companyId = companyResult.rows[0].companyid;
+
+    // Fetch assessment ensuring ownership
+    const assessmentQuery = `
+      SELECT a.assessmentid, a.questionnaireid, a.status, a.startdate, a.completiondate, a.finalscore,
+             q.title AS questionnaire_title, q.description AS questionnaire_description
+      FROM Assessment a
+      LEFT JOIN Questionnaire q ON a.questionnaireid = q.questionnaireid
+      WHERE a.assessmentid = $1 AND a.companyid = $2
+    `;
+    const assessmentRes = await pool.query(assessmentQuery, [parseInt(assessmentId), companyId]);
+    if (assessmentRes.rows.length === 0) {
+      res.status(404).json({ success: false, message: 'Assessment not found or access denied' });
+      return;
+    }
+    const assessment = assessmentRes.rows[0];
+
+    // Pull question + answer info for aggregation
+    const qaQuery = `
+      SELECT q.questionid, q.category, q.weight, a.answerid, a.score
+      FROM Question q
+      LEFT JOIN Answer a ON q.questionid = a.questionid AND a.assessmentid = $1
+      WHERE q.questionnaireid = $2
+      ORDER BY q.questionid
+    `;
+    const qaResult = await pool.query(qaQuery, [parseInt(assessmentId), assessment.questionnaireid]);
+
+    interface CategoryAgg { total: number; answered: number; score: number; maxScore: number; }
+    const categoryMap: Record<string, CategoryAgg> = {};
+    let totalAnswered = 0;
+    let totalQuestions = 0;
+    let accumulatedScore = 0;
+    let accumulatedMaxScore = 0;
+
+    qaResult.rows.forEach((row: any) => {
+      const category = row.category || 'General';
+      if (!categoryMap[category]) {
+        categoryMap[category] = { total: 0, answered: 0, score: 0, maxScore: 0 };
+      }
+      categoryMap[category].total += 1;
+      totalQuestions += 1;
+      const weight = parseInt(row.weight) || 10;
+      categoryMap[category].maxScore += weight;
+      accumulatedMaxScore += weight;
+      if (row.answerid) {
+        categoryMap[category].answered += 1;
+        totalAnswered += 1;
+        if (row.score !== null) {
+          const s = parseFloat(row.score);
+          categoryMap[category].score += s;
+          accumulatedScore += s;
+        }
+      }
+    });
+
+    const progressPercentage = totalQuestions > 0 ? Math.round((totalAnswered / totalQuestions) * 100) : 0;
+    const calculatedScore = accumulatedMaxScore > 0 ? Math.round((accumulatedScore / accumulatedMaxScore) * 100) : 0;
+
+    const categories = Object.entries(categoryMap).map(([name, agg]) => ({
+      name,
+      totalQuestions: agg.total,
+      answeredQuestions: agg.answered,
+      progressPercentage: agg.total > 0 ? Math.round((agg.answered / agg.total) * 100) : 0,
+      calculatedScore: agg.maxScore > 0 ? Math.round((agg.score / agg.maxScore) * 100) : 0
+    }));
+
+    res.status(200).json({
+      success: true,
+      data: {
+        assessmentId: assessment.assessmentid,
+        questionnaireId: assessment.questionnaireid,
+        questionnaireTitle: assessment.questionnaire_title || `Assessment ${assessment.questionnaireid}`,
+        questionnaireDescription: assessment.questionnaire_description,
+        status: assessment.status,
+        startDate: assessment.startdate,
+        completionDate: assessment.completiondate,
+        finalScore: assessment.finalscore, // Stored final score if available
+        calculatedScore,
+        progressPercentage,
+        totalQuestions,
+        answeredQuestions: totalAnswered,
+        categories
+      }
+    });
+  } catch (error) {
+    console.error('Error getting assessment results:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error retrieving assessment results',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+};
+
+// Complete assessment - marks as completed and calculates final score
+export const completeAssessment = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { questionnaireId } = req.body;
+    const userId = req.user?.userID;
+
+    console.log('🏁 Completing assessment - Request details:', { 
+      questionnaireId, 
+      userId,
+      body: req.body,
+      user: req.user
+    });
+
+    if (!questionnaireId || !userId) {
+      console.log('❌ Missing required data:', { questionnaireId, userId });
+      res.status(400).json({
+        success: false,
+        message: 'Missing required data'
+      });
+      return;
+    }
+
+    // Get user's company
+    const companyQuery = 'SELECT companyid FROM Company WHERE userid = $1';
+    const companyResult = await pool.query(companyQuery, [userId]);
+
+    console.log('🏢 Company query result:', companyResult.rows);
+
+    if (companyResult.rows.length === 0) {
+      console.log('❌ No company found for user:', userId);
+      res.status(404).json({
+        success: false,
+        message: 'No company found for user'
+      });
+      return;
+    }
+
+    const companyId = companyResult.rows[0].companyid;
+    console.log('✅ Found company:', companyId);
+
+    // Get the assessment
+    const assessmentQuery = `
+      SELECT a.* 
+      FROM Assessment a 
+      WHERE a.companyid = $1 AND a.questionnaireid = $2
+    `;
+    const assessmentResult = await pool.query(assessmentQuery, [companyId, questionnaireId]);
+
+    console.log('📋 Assessment query result:', assessmentResult.rows);
+
+    if (assessmentResult.rows.length === 0) {
+      console.log('❌ Assessment not found for:', { companyId, questionnaireId });
+      res.status(404).json({
+        success: false,
+        message: 'Assessment not found'
+      });
+      return;
+    }
+
+    const assessment = assessmentResult.rows[0];
+    const assessmentId = assessment.assessmentid;
+    console.log('✅ Found assessment:', assessmentId);
+
+    // Calculate final score based on all answers
+    const scoreQuery = `
+      SELECT 
+        COUNT(DISTINCT a.answerid) as answered_count,
+        COUNT(DISTINCT q.questionid) as total_count,
+        COALESCE(SUM(
+          CASE 
+            WHEN a.response IS NOT NULL THEN
+              -- For multiple choice, calculate percentage based on response value
+              CASE 
+                WHEN q.type = 'multiple_choice' THEN 
+                  (CAST(a.response AS DECIMAL) * q.weight / 100)
+                ELSE 
+                  -- For essay, default scoring (can be improved with AI)
+                  (q.weight * 0.7)
+              END
+            ELSE 0
+          END
+        ), 0) as total_score,
+        COALESCE(SUM(q.weight), 0) as max_score
+      FROM Question q
+      LEFT JOIN Answer a ON q.questionid = a.questionid AND a.assessmentid = $1
+      WHERE q.questionnaireid = $2
+    `;
+
+    console.log('📊 Running score query with:', { assessmentId, questionnaireId });
+    const scoreResult = await pool.query(scoreQuery, [assessmentId, questionnaireId]);
+    const scoreData = scoreResult.rows[0];
+
+    console.log('📊 Raw score data:', scoreData);
+
+    const answeredCount = parseInt(scoreData.answered_count);
+    const totalCount = parseInt(scoreData.total_count);
+    const totalScore = parseFloat(scoreData.total_score);
+    const maxScore = parseFloat(scoreData.max_score);
+
+    console.log('📊 Score calculation:', {
+      answeredCount,
+      totalCount,
+      totalScore,
+      maxScore
+    });
+
+    // Check if all questions are answered
+    if (answeredCount < totalCount) {
+      console.log('⚠️ Not all questions answered');
+      res.status(400).json({
+        success: false,
+        message: `Please answer all questions. ${answeredCount}/${totalCount} answered.`
+      });
+      return;
+    }
+
+    // Calculate final score as percentage
+    const finalScore = maxScore > 0 ? Math.round((totalScore / maxScore) * 100) : 0;
+
+    console.log('🎯 Final score calculated:', finalScore);
+
+    // Update assessment status and final score
+    const updateQuery = `
+      UPDATE Assessment 
+      SET 
+        status = 'completed',
+        finalscore = $1,
+        completiondate = NOW()
+      WHERE assessmentid = $2
+      RETURNING *
+    `;
+
+    console.log('💾 Updating assessment with:', { finalScore, assessmentId });
+    const updateResult = await pool.query(updateQuery, [finalScore, assessmentId]);
+    const updatedAssessment = updateResult.rows[0];
+
+    console.log('✅ Assessment completed successfully:', {
+      assessmentId,
+      finalScore,
+      status: 'completed',
+      updatedAssessment
+    });
+
+    res.status(200).json({
+      success: true,
+      message: 'Assessment completed successfully!',
+      data: {
+        assessmentId: updatedAssessment.assessmentid,
+        questionnaireId: updatedAssessment.questionnaireid,
+        status: updatedAssessment.status,
+        finalScore: updatedAssessment.finalscore,
+        completionDate: updatedAssessment.completiondate,
+        answeredQuestions: answeredCount,
+        totalQuestions: totalCount
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Error completing assessment:', error);
+    console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace');
+    res.status(500).json({
+      success: false,
+      message: 'Error completing assessment',
       error: error instanceof Error ? error.message : 'Unknown error'
     });
   }

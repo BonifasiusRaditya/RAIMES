@@ -1,15 +1,18 @@
-import api from './api';
+import api from "./api";
 
 export const assessmentService = {
   // Get current assessment progress for resume functionality
   getCurrentAssessment: async (questionnaireId) => {
     try {
-      console.log('🔍 Getting current assessment for questionnaire:', questionnaireId);
+      console.log(
+        "🔍 Getting current assessment for questionnaire:",
+        questionnaireId
+      );
       const response = await api.get(`/assessments/current/${questionnaireId}`);
-      console.log('✅ Current assessment response:', response.data);
+      console.log("✅ Current assessment response:", response.data);
       return response.data;
     } catch (error) {
-      console.error('❌ Error getting current assessment:', error);
+      console.error("❌ Error getting current assessment:", error);
       return null; // Return null if no assessment found
     }
   },
@@ -17,18 +20,18 @@ export const assessmentService = {
   // Start a new assessment
   startAssessment: async (questionnaireId) => {
     try {
-      console.log('🚀 Starting assessment for questionnaire:', questionnaireId);
-      const response = await api.post('/assessments/start', { 
-        questionnaireId: parseInt(questionnaireId) 
+      console.log("🚀 Starting assessment for questionnaire:", questionnaireId);
+      const response = await api.post("/assessments/start", {
+        questionnaireId: parseInt(questionnaireId),
       });
-      console.log('✅ Assessment start response:', response.data);
+      console.log("✅ Assessment start response:", response.data);
       return response.data;
     } catch (error) {
-      console.error('❌ Error starting assessment:', error);
-      console.error('Error details:', {
+      console.error("❌ Error starting assessment:", error);
+      console.error("Error details:", {
         message: error.message,
         response: error.response?.data,
-        status: error.response?.status
+        status: error.response?.status,
       });
       throw error;
     }
@@ -37,15 +40,15 @@ export const assessmentService = {
   // Save progress when user answers a question (called on "Save & Continue")
   saveProgress: async ({ assessmentId, questionId, answer, files = [] }) => {
     try {
-      const response = await api.post('/assessments/save-progress', {
+      const response = await api.post("/assessments/save-progress", {
         assessmentId: parseInt(assessmentId),
         questionId: parseInt(questionId),
         answer,
-        files
+        files,
       });
       return response.data;
     } catch (error) {
-      console.error('Error saving progress:', error);
+      console.error("Error saving progress:", error);
       throw error;
     }
   },
@@ -53,14 +56,20 @@ export const assessmentService = {
   // Update current position when user navigates (without saving answer)
   updateCurrentPosition: async (questionnaireId, currentQuestionIndex) => {
     try {
-      console.log('🚶 Updating current position:', { questionnaireId, currentQuestionIndex });
-      const response = await api.put(`/assessments/position/${questionnaireId}`, {
-        currentQuestionIndex: parseInt(currentQuestionIndex)
+      console.log("🚶 Updating current position:", {
+        questionnaireId,
+        currentQuestionIndex,
       });
-      console.log('✅ Position update response:', response.data);
+      const response = await api.put(
+        `/assessments/position/${questionnaireId}`,
+        {
+          currentQuestionIndex: parseInt(currentQuestionIndex),
+        }
+      );
+      console.log("✅ Position update response:", response.data);
       return response.data;
     } catch (error) {
-      console.error('❌ Error updating position:', error);
+      console.error("❌ Error updating position:", error);
       // Don't throw error for position updates, just log it
       return null;
     }
@@ -72,17 +81,17 @@ export const assessmentService = {
       const response = await api.get(`/assessments/${assessmentId}/progress`);
       return response.data;
     } catch (error) {
-      console.error('Error fetching assessment progress:', error);
+      console.error("Error fetching assessment progress:", error);
       throw error;
     }
   },
   // Get all assessments for current user/company
   getMyAssessments: async () => {
     try {
-      const response = await api.get('/assessments/my-assessments');
+      const response = await api.get("/assessments/my-assessments");
       return response.data;
     } catch (error) {
-      console.error('Error fetching my assessments:', error);
+      console.error("Error fetching my assessments:", error);
       throw error;
     }
   },
@@ -93,18 +102,7 @@ export const assessmentService = {
       const response = await api.get(`/assessments/${assessmentId}`);
       return response.data;
     } catch (error) {
-      console.error('Error fetching assessment:', error);
-      throw error;
-    }
-  },
-
-  // Start a new assessment
-  startAssessment: async (questionnaireId) => {
-    try {
-      const response = await api.post('/assessments/start', { questionnaireId });
-      return response.data;
-    } catch (error) {
-      console.error('Error starting assessment:', error);
+      console.error("Error fetching assessment:", error);
       throw error;
     }
   },
@@ -114,11 +112,11 @@ export const assessmentService = {
     try {
       const response = await api.post(`/assessments/${assessmentId}/answers`, {
         questionId,
-        ...answerData
+        ...answerData,
       });
       return response.data;
     } catch (error) {
-      console.error('Error submitting answer:', error);
+      console.error("Error submitting answer:", error);
       throw error;
     }
   },
@@ -127,29 +125,45 @@ export const assessmentService = {
   uploadEvidence: async (assessmentId, questionId, file) => {
     try {
       const formData = new FormData();
-      formData.append('evidence', file);
-      formData.append('assessmentId', assessmentId);
-      formData.append('questionId', questionId);
+      formData.append("evidence", file);
+      formData.append("assessmentId", assessmentId);
+      formData.append("questionId", questionId);
 
-      const response = await api.post('/assessments/upload-evidence', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
+      const response = await api.post(
+        "/assessments/upload-evidence",
+        formData,
+        {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        }
+      );
       return response.data;
     } catch (error) {
-      console.error('Error uploading evidence:', error);
+      console.error("Error uploading evidence:", error);
       throw error;
     }
   },
 
   // Complete assessment
-  completeAssessment: async (assessmentId) => {
+  completeAssessment: async (questionnaireId) => {
     try {
-      const response = await api.post(`/assessments/${assessmentId}/complete`);
+      console.log(
+        "🏁 Completing assessment for questionnaire:",
+        questionnaireId
+      );
+      const response = await api.post("/assessments/complete", {
+        questionnaireId: parseInt(questionnaireId),
+      });
+      console.log("✅ Assessment completed:", response.data);
       return response.data;
     } catch (error) {
-      console.error('Error completing assessment:', error);
+      console.error("❌ Error completing assessment:", error);
+      console.error("❌ Error details:", {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+      });
       throw error;
     }
   },
@@ -160,18 +174,18 @@ export const assessmentService = {
       const response = await api.get(`/assessments/${assessmentId}/results`);
       return response.data;
     } catch (error) {
-      console.error('Error fetching assessment results:', error);
+      console.error("Error fetching assessment results:", error);
       throw error;
     }
   },
 
-  // Get assessment progress
-  getAssessmentProgress: async (assessmentId) => {
+  // Get assessment detail with questions and answers
+  getAssessmentDetail: async (assessmentId) => {
     try {
-      const response = await api.get(`/assessments/${assessmentId}/progress`);
+      const response = await api.get(`/assessments/detail/${assessmentId}`);
       return response.data;
     } catch (error) {
-      console.error('Error fetching assessment progress:', error);
+      console.error("Error fetching assessment detail:", error);
       throw error;
     }
   },
@@ -179,18 +193,18 @@ export const assessmentService = {
   // Admin/Auditor: Get all assessments
   getAllAssessments: async (filters = {}) => {
     try {
-      console.log('🔍 getAllAssessments called with filters:', filters);
+      console.log("🔍 getAllAssessments called with filters:", filters);
       const params = new URLSearchParams(filters);
-      console.log('📡 Making request to:', `/assessments/all?${params}`);
+      console.log("📡 Making request to:", `/assessments/all?${params}`);
       const response = await api.get(`/assessments/all?${params}`);
-      console.log('✅ getAllAssessments response:', response.data);
+      console.log("✅ getAllAssessments response:", response.data);
       return response.data;
     } catch (error) {
-      console.error('❌ Error fetching all assessments:', error);
-      console.error('Error details:', {
+      console.error("❌ Error fetching all assessments:", error);
+      console.error("Error details:", {
         message: error.message,
         response: error.response?.data,
-        status: error.response?.status
+        status: error.response?.status,
       });
       throw error;
     }
@@ -199,10 +213,13 @@ export const assessmentService = {
   // Admin/Auditor: Review and approve assessment
   reviewAssessment: async (assessmentId, reviewData) => {
     try {
-      const response = await api.post(`/assessments/${assessmentId}/review`, reviewData);
+      const response = await api.post(
+        `/assessments/${assessmentId}/review`,
+        reviewData
+      );
       return response.data;
     } catch (error) {
-      console.error('Error reviewing assessment:', error);
+      console.error("Error reviewing assessment:", error);
       throw error;
     }
   },

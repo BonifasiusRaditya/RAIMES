@@ -115,30 +115,22 @@ export default function LandingPage() {
               className="mt-8 flex gap-4 items-center"
             >
               <motion.div
-                whileHover={prefersReducedMotion ? {} : { y: -2 }}
+                whileHover={prefersReducedMotion ? {} : { y: -2, scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
               >
                 <Link
                   to="/login"
-                  className="px-6 py-3 bg-raimes-yellow text-white font-semibold rounded-lg hover:opacity-90 transition-opacity"
+                  className="px-8 py-4 text-lg bg-raimes-yellow text-white font-bold rounded-lg hover:bg-raimes-yellow/90 shadow-lg hover:shadow-xl transition-all"
                 >
                   Get Started Free
                 </Link>
               </motion.div>
-              <motion.a
-                href="#features"
-                whileHover={prefersReducedMotion ? {} : { y: -2 }}
-                whileTap={{ scale: 0.98 }}
-                className="px-6 py-3 border-2 border-raimes-yellow text-raimes-yellow font-semibold rounded-lg hover:bg-raimes-yellow hover:text-white transition-colors"
-              >
-                Watch Demo
-              </motion.a>
             </motion.div>
           </motion.div>
 
           {/* ECO RATING BANNER (DIPERBAIKI DENGAN GLASSMORPHISM) */}
           <motion.div
-            className="bg-white/15 backdrop-blur-xl rounded-2xl shadow-2xl p-6 border border-white/30 hover:bg-white/20 transition"
+            className="bg-raimes-purple/90 backdrop-blur-xl rounded-2xl shadow-2xl p-6 border border-raimes-yellow hover:bg-raimes-purple transition"
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true, amount: 0.2 }}
@@ -158,11 +150,11 @@ export default function LandingPage() {
                   key={label}
                   variants={fadeInUp}
                   whileHover={prefersReducedMotion ? {} : { scale: 1.03 }}
-                  className={`${bgColor} backdrop-blur-md rounded-xl p-4 border border-white/30 hover:bg-white/25 transition shadow-lg`}
+                  className="bg-gray-800 backdrop-blur-md rounded-xl p-4 border border-raimes-yellow/50 hover:border-raimes-yellow transition shadow-lg"
                 >
                   <div className="flex items-center gap-2 mb-2">
                     <Icon className={`${color} w-5 h-5`} />
-                    <div className="text-sm text-black font-medium">
+                    <div className="text-sm text-white font-medium">
                       {label}
                     </div>
                   </div>
@@ -177,7 +169,7 @@ export default function LandingPage() {
       </section>
 
       {/* Counters */}
-      <section className="px-8 py-10 bg-white/10 backdrop-blur-lg border-y border-white/20">
+      <section className="px-8 py-10 bg-raimes-purple">
         <motion.div
           className="max-w-6xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-6 text-center"
           initial="hidden"
@@ -195,7 +187,7 @@ export default function LandingPage() {
               <div className="text-4xl font-extrabold text-raimes-yellow drop-shadow-md">
                 {num}
               </div>
-              <div className="text-black font-medium">{label}</div>
+              <div className="text-white font-medium">{label}</div>
             </motion.div>
           ))}
         </motion.div>
@@ -218,8 +210,8 @@ export default function LandingPage() {
             viewport={{ once: true, amount: 0.3 }}
             variants={fadeInUp}
           >
-            Powerful Features for{" "}
-            <span className="text-raimes-yellow">Sustainable Mining</span>
+            Comprehensive AI-Powered{" "}
+            <span className="text-raimes-yellow">Mining Assessment</span>
           </motion.h2>
           <motion.p
             className="text-center text-black mt-2 drop-shadow-md font-medium"
@@ -228,11 +220,11 @@ export default function LandingPage() {
             viewport={{ once: true, amount: 0.3 }}
             variants={fadeInUp}
           >
-            Comprehensive tools to monitor, analyze, and improve your
-            performance.
+            Intelligent evaluation system to assess and improve your mining
+            sustainability practices.
           </motion.p>
           <motion.div
-            className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8"
+            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-8"
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true, amount: 0.2 }}
@@ -240,28 +232,28 @@ export default function LandingPage() {
           >
             {[
               [
-                "Real-Time Monitoring",
-                "IoT sensor integration for continuous environmental data collection and analysis.",
+                "Questionnaire-Based Assessment",
+                "Comprehensive self-assessment questionnaires covering all aspects of responsible mining practices.",
               ],
               [
-                "Dynamic Rating System",
-                "KPI-based scoring with transparent methodology and benchmarking.",
+                "AI-Powered Evaluation",
+                "Advanced AI algorithms analyze your responses and evidence to generate accurate sustainability scores.",
               ],
               [
-                "Predictive Analytics",
-                "AI-powered insights to forecast trends and identify improvements.",
+                "Evidence Validation",
+                "Upload and submit supporting documents to validate your mining practices and compliance.",
               ],
               [
-                "Compliance Tracking",
-                "Automated monitoring of regulatory requirements and certification.",
+                "Real-Time Scoring",
+                "Get instant feedback on your assessment with weighted scoring based on question importance.",
               ],
               [
-                "Automated Reporting",
-                "Customizable reports for stakeholders, regulators, and investors.",
+                "Progress Tracking",
+                "Monitor your assessment completion status and track improvements over time.",
               ],
               [
-                "Multi-Site Management",
-                "Centralized dashboard to manage multiple operations.",
+                "Detailed Reports",
+                "Receive comprehensive evaluation reports highlighting strengths and areas for improvement.",
               ],
             ].map(([title, desc]) => (
               <motion.div
@@ -275,12 +267,12 @@ export default function LandingPage() {
                       }
                 }
                 transition={{ duration: 0.2 }}
-                className="bg-white rounded-2xl p-6 shadow-lg border border-gray-200 hover:shadow-xl hover:border-raimes-purple transition"
+                className="bg-raimes-purple rounded-2xl p-6 shadow-lg border border-raimes-yellow hover:shadow-xl hover:border-raimes-yellow hover:bg-raimes-purple/90 transition"
               >
-                <h3 className="text-lg font-semibold text-raimes-purple">
+                <h3 className="text-lg font-semibold text-raimes-yellow">
                   {title}
                 </h3>
-                <p className="text-gray-700 mt-2">{desc}</p>
+                <p className="text-white mt-2">{desc}</p>
               </motion.div>
             ))}
           </motion.div>
@@ -288,10 +280,7 @@ export default function LandingPage() {
       </section>
 
       {/* Why Choose */}
-      <section
-        id="benefits"
-        className="px-8 py-12 bg-white/10 backdrop-blur-lg border-y border-white/20"
-      >
+      <section id="benefits" className="px-8 py-12 bg-raimes-purple">
         <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-10 items-start">
           <motion.div
             initial="hidden"
@@ -301,11 +290,11 @@ export default function LandingPage() {
           >
             <motion.h2
               variants={fadeInUp}
-              className="text-3xl font-bold text-black drop-shadow-md"
+              className="text-3xl font-bold text-white drop-shadow-md"
             >
               Why Choose <span className="text-raimes-yellow">RAIMES</span>?
             </motion.h2>
-            <motion.ul className="mt-4 space-y-3 text-black font-medium">
+            <motion.ul className="mt-4 space-y-3 text-white font-medium">
               {[
                 "Continuous Monitoring — get real-time insights 24/7",
                 "Transparent Methodology — standardized framework",
@@ -319,13 +308,13 @@ export default function LandingPage() {
             </motion.ul>
           </motion.div>
           <motion.div
-            className="bg-white rounded-2xl p-6 border border-gray-200 shadow-lg"
+            className="bg-raimes-purple rounded-2xl p-6 border border-raimes-yellow shadow-lg"
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true, amount: 0.2 }}
             variants={scaleIn}
           >
-            <h3 className="text-raimes-purple font-semibold">
+            <h3 className="text-raimes-yellow font-semibold">
               For Stakeholders
             </h3>
             <motion.div
@@ -338,10 +327,10 @@ export default function LandingPage() {
                 <motion.div
                   key={s}
                   variants={fadeInUp}
-                  className="bg-gray-50 rounded-xl p-4 border border-gray-200 shadow-sm"
+                  className="bg-gray-800 rounded-xl p-4 border border-raimes-yellow/50 shadow-sm"
                 >
-                  <div className="text-raimes-purple font-semibold">{s}</div>
-                  <div className="text-gray-700 text-sm mt-1">
+                  <div className="text-raimes-yellow font-semibold">{s}</div>
+                  <div className="text-white text-sm mt-1">
                     Benchmark, monitor compliance, and verify claims with data.
                   </div>
                 </motion.div>
@@ -379,7 +368,7 @@ export default function LandingPage() {
             >
               <Link
                 to="/register"
-                className="px-6 py-3 bg-raimes-yellow text-white font-semibold rounded-lg hover:opacity-90 transition-opacity"
+                className="px-6 py-3 bg-raimes-purple text-white font-semibold rounded-lg hover:bg-raimes-purple/90 transition-all"
               >
                 Request an Account
               </Link>
@@ -390,7 +379,7 @@ export default function LandingPage() {
             >
               <Link
                 to="/login"
-                className="px-6 py-3 border-2 border-raimes-yellow text-raimes-yellow font-semibold rounded-lg hover:bg-raimes-yellow hover:text-white transition-colors"
+                className="px-6 py-3 border-2 border-raimes-purple text-raimes-purple font-semibold rounded-lg hover:bg-raimes-purple hover:text-white transition-all"
               >
                 Contact Admin
               </Link>
