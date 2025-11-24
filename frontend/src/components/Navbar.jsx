@@ -37,7 +37,6 @@ export default function Navbar() {
             ...(user?.role === "admin"
               ? [
                   ["/admin/account-requests", "Account Requests"],
-                  ["/admin/add-account", "Add Account"],
                 ]
               : []),
             ["/contact", "Contact"],

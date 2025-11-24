@@ -2,9 +2,6 @@ import { useState, useEffect } from "react";
 import Navbar from "../../components/Navbar";
 import { assessmentService } from "../../services/assessmentService";
 import { useAuth } from "../../context/AuthContext";
-import warningIcon from "../../assets/warning-icon.png";
-import bellIcon from "../../assets/bell-icon.png";
-import plusIcon from "../../assets/plus-icon.png";
 
 function Dashboard() {
   const { user } = useAuth();
@@ -119,13 +116,17 @@ function Dashboard() {
     <div className="min-h-screen bg-gray-50">
       <Navbar />
 
-      <main className="px-8 py-8">
-        <h1 className="text-4xl font-bold text-raimes-purple mb-8">
-          Dashboard
-        </h1>
+      <main className="xl:mx-20 xl:px-16 py-8 mx-4 px-4">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-900">
+            Welcome, {user?.username || "User"}
+          </h1>
+          <p className="mt-2 text-gray-600">
+            Here's an overview of all assessments under your supervision.
+          </p>
+        </div>
 
-        <div className="grid grid-cols-4 gap-6 mb-8">
-          <div className="bg-white rounded-2xl p-8 shadow">
+        <div className="bg-white rounded-lg shadow-md border-l-4 border-raimes-purple p-6 mb-6">
             <h2 className="text-xl font-semibold text-raimes-purple mb-4">
               Assessment Progress
             </h2>
@@ -145,49 +146,85 @@ function Dashboard() {
             </p>
           </div>
 
-          <div className="bg-white rounded-2xl p-8 shadow flex items-center justify-center gap-6">
-            <div className="flex flex-col items-center">
-              <div className="h-20 w-20 bg-raimes-purple rounded-full flex items-center justify-center">
-                <img src={warningIcon} alt="Warning Icon" className="h-10 w-10" />
+        <div className="grid md:grid-cols-3 grid-cols-1 gap-6 mb-8">
+          <a href="/admin/add-account" className="bg-white rounded-lg shadow-md border-l-4 border-green-500 p-6 hover:shadow-lg transition-shadow cursor-pointer">
+            <div className="flex items-center">
+              <div className="shrink-0 bg-green-100 rounded-md p-3">
+                <svg
+                  className="h-6 w-6 text-green-600"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 6v12m-6-6h12"
+                  />
+                </svg>
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-600">Add New Account</p>
               </div>
             </div>
-            <div className="text-center">
-              <div className="text-6xl font-bold text-raimes-purple">{stats.invalidData}</div>
-              <div className="text-raimes-purple font-semibold">
-                Data validation issues
+          </a>
+
+          <div className="bg-white rounded-lg shadow-md border-l-4 border-raimes-red p-6">
+            <div className="flex items-center">
+              <div className="shrink-0 bg-red-100 rounded-md p-3">
+                <svg
+                  className="h-6 w-6 text-raimes-red"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"
+                  />
+                </svg>
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-600">Data Validation Issues</p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {stats.invalidData}
+                </p>
               </div>
             </div>
           </div>
 
-          <div className="bg-white rounded-2xl p-8 shadow flex items-center justify-center gap-6">
-            <div className="h-20 w-20 bg-raimes-purple rounded-full flex items-center justify-center">
-              <img src={bellIcon} alt="Bell Icon" className="h-16 w-16" />
-            </div>
-            <div className="text-center">
-              <div className="text-6xl font-bold text-raimes-purple">{stats.notifications}</div>
-              <div className="text-raimes-purple font-semibold">
-                Notifications
+          <div className="bg-white rounded-lg shadow-md border-l-4 border-raimes-yellow p-6">
+            <div className="flex items-center">
+              <div className="shrink-0 bg-yellow-100 rounded-md p-3">
+                <svg
+                  className="h-6 w-6 text-raimes-yellow"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
+                  />
+                </svg>
               </div>
-            </div>
-          </div>
-
-          <div 
-            className="bg-white rounded-2xl p-8 shadow flex items-center justify-center gap-6 cursor-pointer hover:shadow-lg transition-shadow"
-            onClick={() => window.location.href = '/admin/add-account'}
-          >
-            <div className="h-20 w-20 bg-raimes-purple rounded-full flex items-center justify-center">
-              <img src={plusIcon} alt="Plus Icon" className="h-10 w-10" />
-            </div>
-            <div className="text-center">
-              <div className="text-3xltext-raimes-purple font-semibold">
-                Add New User
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-600">Notifications</p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {stats.notifications}
+                </p>
               </div>
             </div>
           </div>
         </div>
 
         {error && (
-          <div className="mb-6 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+          <div className="mb-6 bg-red-50 border border-red-200 text-raimes-red px-4 py-3 rounded-lg">
             {error}
           </div>
         )}
