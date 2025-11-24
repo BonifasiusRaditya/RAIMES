@@ -274,7 +274,7 @@ export const saveProgress = async (req: AuthRequest, res: Response): Promise<voi
       totalQuestions,
       allQuestionIds: all_question_ids,
       answeredQuestionIds: answered_question_ids,
-      missingQuestions: all_question_ids ? all_question_ids.filter(id => !answered_question_ids?.includes(id)) : []
+      missingQuestions: all_question_ids ? all_question_ids.filter((id: any) => !answered_question_ids?.includes(id)) : []
     });
     
     // Calculate precise progress percentage
@@ -1139,6 +1139,205 @@ export const completeAssessment = async (req: AuthRequest, res: Response): Promi
     res.status(500).json({
       success: false,
       message: 'Error completing assessment',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+};
+
+// Score assessment using AI Engine
+export const scoreAssessmentController = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { assessmentId } = req.body;
+    const userId = req.user?.userID;
+
+    if (!assessmentId || !userId) {
+      res.status(400).json({
+        success: false,
+        message: 'Missing required data: assessmentId'
+      });
+      return;
+    }
+
+    // Verify user owns this assessment
+    const verifyQuery = `
+      SELECT a.assessmentid, a.status, a.finalscore
+      FROM Assessment a
+      JOIN Company c ON a.companyid = c.companyid
+      WHERE a.assessmentid = $1 AND c.userid = $2
+    `;
+
+    const verifyResult = await pool.query(verifyQuery, [assessmentId, userId]);
+    
+    if (verifyResult.rows.length === 0) {
+      res.status(403).json({
+        success: false,
+        message: 'Unauthorized access to assessment'
+      });
+      return;
+    }
+
+    const assessment = verifyResult.rows[0];
+
+    // Check if assessment is completed
+    if (assessment.status !== 'completed') {
+      res.status(400).json({
+        success: false,
+        message: 'Assessment must be completed before scoring'
+      });
+      return;
+    }
+
+    // Check if already scored
+    if (assessment.finalscore !== null) {
+      res.status(400).json({
+        success: false,
+        message: 'Assessment has already been scored',
+        currentScore: assessment.finalscore
+      });
+      return;
+    }
+
+    // Import and use AI scoring service
+    const aiScoringModule = await import('../ai_service/ai_scoring.js');
+    const scoreResult = await aiScoringModule.scoreAssessment(assessmentId);
+
+    if (!scoreResult.success) {
+      res.status(500).json({
+        success: false,
+        message: 'Failed to score assessment',
+        error: scoreResult.error
+      });
+      return;
+    }
+
+    res.json({
+      success: true,
+      message: 'Assessment scored successfully',
+      scoring: scoreResult.scoring
+    });
+
+  } catch (error) {
+    console.error('Error in scoreAssessmentController:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error scoring assessment',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+};
+
+// Get assessment scoring result
+export const getAssessmentScoringResult = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { assessmentId } = req.params;
+    const userId = req.user?.userID;
+
+    if (!assessmentId || !userId) {
+      res.status(400).json({
+        success: false,
+        message: 'Missing required data: assessmentId'
+      });
+      return;
+    }
+
+    // Verify user owns this assessment
+    const verifyQuery = `
+      SELECT 
+        a.assessmentid,
+        a.finalscore,
+        a.scoringdetails,
+        a.status,
+        c.companyname,
+        q.questionnairename
+      FROM Assessment a
+      JOIN Company c ON a.companyid = c.companyid
+      JOIN Questionnaire q ON a.questionnaireid = q.questionnaireid
+      WHERE a.assessmentid = $1 AND c.userid = $2
+    `;
+
+    const verifyResult = await pool.query(verifyQuery, [assessmentId, userId]);
+    
+    if (verifyResult.rows.length === 0) {
+      res.status(403).json({
+        success: false,
+        message: 'Unauthorized access to assessment'
+      });
+      return;
+    }
+
+    const assessment = verifyResult.rows[0];
+
+    if (!assessment.scoringdetails) {
+      res.status(404).json({
+        success: false,
+        message: 'Assessment has not been scored yet'
+      });
+      return;
+    }
+
+    res.json({
+      success: true,
+      assessment: {
+        assessmentid: assessment.assessmentid,
+        companyname: assessment.companyname,
+        questionnairename: assessment.questionnairename,
+        finalscore: assessment.finalscore,
+        status: assessment.status,
+        scoring: JSON.parse(assessment.scoringdetails)
+      }
+    });
+
+  } catch (error) {
+    console.error('Error in getAssessmentScoringResult:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error retrieving scoring result',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+};
+
+// Get scoring statistics for a questionnaire
+export const getScoringStatistics = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { questionnaireId } = req.params;
+
+    if (!questionnaireId) {
+      res.status(400).json({
+        success: false,
+        message: 'Missing required data: questionnaireId'
+      });
+      return;
+    }
+
+    const aiScoringModule = await import('../ai_service/ai_scoring.js');
+    const stats = await aiScoringModule.getScoringStatistics(parseInt(questionnaireId));
+
+    if (!stats) {
+      res.status(404).json({
+        success: false,
+        message: 'No scoring data available'
+      });
+      return;
+    }
+
+    res.json({
+      success: true,
+      statistics: {
+        totalAssessments: parseInt(stats.total_assessments),
+        scoredCount: parseInt(stats.scored_count),
+        averageScore: stats.average_score ? parseFloat(stats.average_score).toFixed(2) : 0,
+        minScore: stats.min_score ? parseFloat(stats.min_score).toFixed(2) : 0,
+        maxScore: stats.max_score ? parseFloat(stats.max_score).toFixed(2) : 0,
+        stddevScore: stats.stddev_score ? parseFloat(stats.stddev_score).toFixed(2) : 0
+      }
+    });
+
+  } catch (error) {
+    console.error('Error in getScoringStatistics:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error retrieving statistics',
       error: error instanceof Error ? error.message : 'Unknown error'
     });
   }

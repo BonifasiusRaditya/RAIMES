@@ -8,7 +8,10 @@ import {
   updateCurrentPosition,
   getAssessmentDetail,
   getAssessmentResults,
-  completeAssessment
+  completeAssessment,
+  scoreAssessmentController,
+  getAssessmentScoringResult,
+  getScoringStatistics
 } from '../controllers/assessmentController.js';
 import { authenticateToken } from '../middleware/auth.js';
 
@@ -40,6 +43,15 @@ router.post('/save-progress', saveProgress);
 
 // Complete assessment (called when "Complete Assessment" is clicked)
 router.post('/complete', completeAssessment);
+
+// Score assessment using AI Engine
+router.post('/score', scoreAssessmentController);
+
+// Get assessment scoring result
+router.get('/:assessmentId/scoring', getAssessmentScoringResult);
+
+// Get scoring statistics for a questionnaire
+router.get('/statistics/:questionnaireId', getScoringStatistics);
 
 // Get user's assessments
 router.get('/my-assessments', getMyAssessments);
