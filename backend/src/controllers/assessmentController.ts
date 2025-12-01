@@ -216,27 +216,51 @@ export const saveProgress = async (req: AuthRequest, res: Response): Promise<voi
     
     const companyId = userCompanyResult.rows[0].companyid;
 
-    // Find assessment by companyId and questionnaireId
-    // assessmentId parameter is actually questionnaireId from frontend
-    const questionnaireIdNum = parseInt(assessmentId);
-    const assessmentQuery = `
-      SELECT a.* FROM Assessment a
-      WHERE a.companyid = $1 AND a.questionnaireid = $2
-    `;
-    
-    const assessmentResult = await pool.query(assessmentQuery, [companyId, questionnaireIdNum]);
-    
-    if (assessmentResult.rows.length === 0) {
-      console.log(`❌ Assessment not found for company ${companyId} and questionnaire ${questionnaireIdNum}`);
-      res.status(404).json({
+    const assessmentIdNum = Number(assessmentId);
+    const questionIdNum = Number(questionId);
+
+    if (Number.isNaN(assessmentIdNum) || Number.isNaN(questionIdNum)) {
+      res.status(400).json({
         success: false,
-        message: `Assessment not found for company ${companyId} and questionnaire ${questionnaireIdNum}`
+        message: 'assessmentId and questionId must be valid numbers'
       });
       return;
     }
 
-    const assessment = assessmentResult.rows[0];
-    const questionIdNum = parseInt(questionId);
+    // Attempt to resolve assessment either by explicit assessmentId or (legacy) questionnaireId payload
+    let assessment: any | null = null;
+
+    const assessmentByIdQuery = `
+      SELECT * FROM Assessment
+      WHERE assessmentid = $1 AND companyid = $2
+    `;
+    const assessmentByIdResult = await pool.query(assessmentByIdQuery, [assessmentIdNum, companyId]);
+
+    if (assessmentByIdResult.rows.length > 0) {
+      assessment = assessmentByIdResult.rows[0];
+    }
+
+    if (!assessment) {
+      const assessmentByQuestionnaireQuery = `
+        SELECT * FROM Assessment
+        WHERE companyid = $1 AND questionnaireid = $2
+      `;
+      const assessmentByQuestionnaire = await pool.query(assessmentByQuestionnaireQuery, [companyId, assessmentIdNum]);
+      if (assessmentByQuestionnaire.rows.length > 0) {
+        assessment = assessmentByQuestionnaire.rows[0];
+      }
+    }
+
+    if (!assessment) {
+      console.log(`❌ Assessment not found for company ${companyId} using identifier ${assessmentId}`);
+      res.status(404).json({
+        success: false,
+        message: `Assessment not found for company ${companyId}`
+      });
+      return;
+    }
+    
+    const questionnaireIdNum = Number(assessment.questionnaireid);
     
     console.log(`💾 Saving answer for question ${questionIdNum} in assessment ${assessment.assessmentid}: "${answer}"`);
     
@@ -533,14 +557,19 @@ export const getCurrentAssessment = async (req: AuthRequest, res: Response): Pro
     
     // Get answered questions from database
     const answeredQuery = `
-      SELECT questionid FROM Answer 
+      SELECT questionid, response FROM Answer 
       WHERE assessmentid = $1
       ORDER BY questionid
     `;
     const answeredResult = await pool.query(answeredQuery, [assessment.assessmentid]);
     const answeredQuestions = answeredResult.rows.map((row: any) => row.questionid);
+    const answerMap = answeredResult.rows.reduce((acc: Record<number, string>, row: any) => {
+      acc[row.questionid] = row.response ?? '';
+      return acc;
+    }, {} as Record<number, string>);
     
     console.log('📋 Answered questions from database:', answeredQuestions);
+    console.log('🗃️ Answer map:', answerMap);
     
     // Get all questions for this questionnaire
     const questionsQuery = `
@@ -595,7 +624,8 @@ export const getCurrentAssessment = async (req: AuthRequest, res: Response): Pro
       totalQuestions,
       progressPercentage,
       nextQuestionIndex,
-      nextQuestionId
+      nextQuestionId,
+      answerMap
     });
 
     res.status(200).json({
@@ -604,6 +634,7 @@ export const getCurrentAssessment = async (req: AuthRequest, res: Response): Pro
         id: assessment.assessmentid,
         questionnaireId: assessment.questionnaireid,
         answeredQuestions,
+        answers: answerMap,
         totalQuestions,
         progressPercentage,
         status: assessment.status,
@@ -656,15 +687,26 @@ export const getMyAssessments = async (req: AuthRequest, res: Response): Promise
         a.startdate,
         a.completiondate,
         a.finalscore,
-        COUNT(ans.answerid) as answered_count,
-        (SELECT COUNT(*) FROM Question WHERE questionnaireid = a.questionnaireid) as total_count
+        q.title AS questionnaire_title,
+        q.description AS questionnaire_description,
+        COUNT(ans.answerid) AS answered_count,
+        (SELECT COUNT(*) FROM Question WHERE questionnaireid = a.questionnaireid) AS total_count
       FROM Assessment a
       LEFT JOIN Answer ans ON a.assessmentid = ans.assessmentid
+      LEFT JOIN Questionnaire q ON a.questionnaireid = q.questionnaireid
       WHERE a.companyid = $1
-      GROUP BY a.assessmentid
-      ORDER BY a.startdate DESC
+      GROUP BY 
+        a.assessmentid,
+        a.questionnaireid,
+        a.status,
+        a.startdate,
+        a.completiondate,
+        a.finalscore,
+        q.title,
+        q.description
+      ORDER BY COALESCE(a.completiondate, a.startdate) DESC
     `;
-    
+
     const result = await pool.query(assessmentsQuery, [companyId]);
     
     const assessmentsData = result.rows.map((row: any) => {
@@ -678,7 +720,8 @@ export const getMyAssessments = async (req: AuthRequest, res: Response): Promise
       return {
         id: row.assessmentid,
         questionnaireId: row.questionnaireid,
-        questionnaireTitle: `Mining Assessment Questionnaire ${row.questionnaireid}`,
+        questionnaireTitle: row.questionnaire_title || `Mining Assessment Questionnaire ${row.questionnaireid}`,
+        questionnaireDescription: row.questionnaire_description,
         status: row.status,
         startDate: row.startdate,
         completionDate: row.completiondate,
@@ -699,6 +742,99 @@ export const getMyAssessments = async (req: AuthRequest, res: Response): Promise
     res.status(500).json({
       success: false,
       message: 'Error retrieving assessments',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+};
+
+// Get completed assessment results for the current user (used by results page)
+export const getMyAssessmentResults = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const userId = req.user?.userID;
+
+    if (!userId) {
+      res.status(401).json({ success: false, message: 'Unauthorized: missing user context' });
+      return;
+    }
+
+    const companyLookupQuery = `
+      SELECT c.companyid
+      FROM Company c
+      WHERE c.userid = $1
+      LIMIT 1
+    `;
+    const companyLookupResult = await pool.query(companyLookupQuery, [userId]);
+    if (companyLookupResult.rows.length === 0) {
+      res.status(404).json({ success: false, message: 'No company associated with this user' });
+      return;
+    }
+    const companyId = companyLookupResult.rows[0].companyid;
+
+    const resultsQuery = `
+      SELECT
+        a.assessmentid,
+        a.questionnaireid,
+        a.status,
+        a.startdate,
+        a.completiondate,
+        a.finalscore,
+        q.title AS questionnaire_title,
+        q.description AS questionnaire_description,
+        COUNT(ans.answerid) AS answered_count,
+        (SELECT COUNT(*) FROM Question WHERE questionnaireid = a.questionnaireid) AS total_count
+      FROM Assessment a
+      LEFT JOIN Answer ans ON a.assessmentid = ans.assessmentid
+      LEFT JOIN Questionnaire q ON a.questionnaireid = q.questionnaireid
+      WHERE a.companyid = $1 AND a.status = 'completed'
+      GROUP BY
+        a.assessmentid,
+        a.questionnaireid,
+        a.status,
+        a.startdate,
+        a.completiondate,
+        a.finalscore,
+        q.title,
+        q.description
+      ORDER BY COALESCE(a.completiondate, a.startdate) DESC
+    `;
+
+    const result = await pool.query(resultsQuery, [companyId]);
+
+    const resultsData = result.rows.map((row: any) => {
+      const answeredCount = parseInt(row.answered_count) || 0;
+      const totalQuestions = parseInt(row.total_count) || 0;
+
+      const progressPercentage = totalQuestions > 0
+        ? Math.round((answeredCount / totalQuestions) * 100)
+        : 0;
+
+      return {
+        id: row.assessmentid,
+        assessmentId: row.assessmentid,
+        questionnaireId: row.questionnaireid,
+        questionnaireTitle: row.questionnaire_title || `Mining Assessment Questionnaire ${row.questionnaireid}`,
+        questionnaireDescription: row.questionnaire_description,
+        status: row.status,
+        startDate: row.startdate,
+        completionDate: row.completiondate,
+        progressPercentage,
+        answeredQuestions: answeredCount,
+        totalQuestions,
+        finalScore: row.finalscore,
+        completedAt: row.completiondate
+      };
+    });
+
+    res.status(200).json({
+      success: true,
+      data: resultsData
+    });
+
+  } catch (error) {
+    console.error('Error getting assessment results list:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error retrieving assessment results',
       error: error instanceof Error ? error.message : 'Unknown error'
     });
   }

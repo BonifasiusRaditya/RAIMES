@@ -28,19 +28,32 @@ export default function ResultsPage() {
         );
 
         // Map to results format
-        const mappedResults = completedAssessments.map((a) => ({
-          id: a.id,
-          assessmentId: a.id,
-          questionnaireId: a.questionnaireId,
-          title: a.questionnaireTitle || `Assessment ${a.questionnaireId}`,
-          completedAt: a.completedAt || a.startDate,
-          score: a.finalScore ?? 0,
-          grade: calculateGrade(a.finalScore ?? 0),
-          category: a.questionnaireDescription || "General Assessment",
-          progressPercentage: a.progressPercentage ?? 100,
-          answeredQuestions: a.answeredQuestions ?? 0,
-          totalQuestions: a.totalQuestions ?? 0,
-        }));
+        const mappedResults = completedAssessments.map((a) => {
+          const rawScore = Number(a.finalScore ?? a.calculatedScore ?? 0);
+          const score = Number.isFinite(rawScore) ? rawScore : 0;
+          const answeredQuestions = Number(a.answeredQuestions ?? 0);
+          const totalQuestions = Number(a.totalQuestions ?? 0);
+          const rawProgress = Number(a.progressPercentage);
+          const progressPercentage = Number.isFinite(rawProgress)
+            ? rawProgress
+            : totalQuestions > 0
+            ? Math.round((answeredQuestions / totalQuestions) * 100)
+            : 100;
+
+          return {
+            id: a.id,
+            assessmentId: a.id,
+            questionnaireId: a.questionnaireId,
+            title: a.questionnaireTitle || `Assessment ${a.questionnaireId}`,
+            completedAt: a.completedAt || a.completionDate || a.startDate,
+            score,
+            grade: calculateGrade(score),
+            category: a.questionnaireDescription || "General Assessment",
+            progressPercentage,
+            answeredQuestions,
+            totalQuestions,
+          };
+        });
 
         setResults(mappedResults);
       } else {

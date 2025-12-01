@@ -95,6 +95,8 @@ function QuestionnairePage() {
         assessmentData.assessmentId || assessmentData.id;
       setAssessmentId(assessmentIdValue);
       setProgressPercentage(assessmentData.progressPercentage || 0);
+      const existingAnswerMap =
+        assessmentData.answers || assessmentData.answerMap || {};
       console.log("🎯 Assessment data:", {
         assessmentId: assessmentIdValue,
         progress: assessmentData.progressPercentage || 0,
@@ -122,11 +124,19 @@ function QuestionnairePage() {
         const initialFiles = {};
         response.data.forEach((q) => {
           // Get the correct question ID field
-          const qId = q.questionID || q.questionid || q.id;
-          if (qId) {
-            // Initialize with empty strings to avoid undefined
-            initialAnswers[qId] = "";
-            initialFiles[qId] = [];
+          const rawId = q.questionID || q.questionid || q.id;
+          if (rawId !== undefined && rawId !== null) {
+            const normalizedId = Number(rawId);
+            const key = Number.isNaN(normalizedId) ? rawId : normalizedId;
+
+            const existingAnswer =
+              existingAnswerMap[key] ??
+              existingAnswerMap[String(key)] ??
+              existingAnswerMap[rawId] ??
+              "";
+
+            initialAnswers[key] = existingAnswer ?? "";
+            initialFiles[key] = [];
           }
         });
         setAnswers(initialAnswers);
@@ -215,7 +225,11 @@ function QuestionnairePage() {
   const handleSaveAndContinue = async () => {
     if (currentQuestion && assessmentId) {
       try {
-        const hasAnswer = answers[currentQuestionId]?.trim();
+        const rawAnswerValue = answers[currentQuestionId];
+        const hasAnswer =
+          typeof rawAnswerValue === "number"
+            ? !Number.isNaN(rawAnswerValue)
+            : (rawAnswerValue ?? "").toString().trim().length > 0;
         const hasFiles = files[currentQuestionId]?.length > 0;
 
         if (!hasAnswer && !hasFiles) {
@@ -234,12 +248,52 @@ function QuestionnairePage() {
 
         setSubmitting(true);
 
+        const effectiveAssessmentId = assessmentId || questionnaireId;
+
+        if (!effectiveAssessmentId) {
+          setNotification({
+            show: true,
+            message:
+              "Unable to save because the assessment session is not initialized yet. Please refresh and try again.",
+            type: "error",
+          });
+          setTimeout(
+            () => setNotification({ show: false, message: "", type: "" }),
+            5000
+          );
+          return;
+        }
+
+        const normalizedQuestionId = Number(currentQuestionId);
+
+        if (Number.isNaN(normalizedQuestionId)) {
+          setNotification({
+            show: true,
+            message: "Cannot save this question because its identifier is invalid.",
+            type: "error",
+          });
+          setTimeout(
+            () => setNotification({ show: false, message: "", type: "" }),
+            5000
+          );
+          return;
+        }
+
         // Save progress to backend
+        const answerToPersistRaw =
+          answers[normalizedQuestionId] ?? answers[currentQuestionId] ?? "";
+        const answerToPersist =
+          typeof answerToPersistRaw === "string"
+            ? answerToPersistRaw
+            : answerToPersistRaw != null
+            ? answerToPersistRaw.toString()
+            : "";
+
         const progressResponse = await assessmentService.saveProgress({
-          assessmentId: questionnaireId, // Pass questionnaireId instead of assessmentId
-          questionId: currentQuestionId,
-          answer: answers[currentQuestionId],
-          files: files[currentQuestionId],
+          assessmentId: effectiveAssessmentId,
+          questionId: normalizedQuestionId,
+          answer: answerToPersist,
+          files: files[normalizedQuestionId] || files[currentQuestionId],
         });
 
         if (progressResponse.success) {
@@ -367,7 +421,11 @@ function QuestionnairePage() {
       // Check if all questions have been answered
       const unansweredQuestions = questions.filter((q) => {
         const qId = q.questionID || q.questionid || q.id;
-        const hasAnswer = answers[qId]?.trim();
+        const rawAnswerValue = answers[qId];
+        const hasAnswer =
+          typeof rawAnswerValue === "number"
+            ? !Number.isNaN(rawAnswerValue)
+            : (rawAnswerValue ?? "").toString().trim().length > 0;
         const hasFiles = files[qId]?.length > 0;
         return !hasAnswer && !hasFiles;
       });
@@ -377,6 +435,78 @@ function QuestionnairePage() {
           show: true,
           message: `Please answer all questions. ${unansweredQuestions.length} question(s) remaining.`,
           type: "warning",
+        });
+        setTimeout(
+          () => setNotification({ show: false, message: "", type: "" }),
+          5000
+        );
+        return;
+      }
+
+      const effectiveAssessmentId = assessmentId || questionnaireId;
+
+      if (!effectiveAssessmentId) {
+        setNotification({
+          show: true,
+          message:
+            "Unable to submit because the assessment session is missing. Please reload the questionnaire and try again.",
+          type: "error",
+        });
+        setTimeout(
+          () => setNotification({ show: false, message: "", type: "" }),
+          5000
+        );
+        return;
+      }
+
+      // Persist every answer to ensure backend has the latest responses
+      try {
+        for (const question of questions) {
+          const questionIdValue =
+            question?.questionID || question?.questionid || question?.id;
+
+          if (questionIdValue === undefined || questionIdValue === null) {
+            continue;
+          }
+
+          const normalizedQuestionId = Number(questionIdValue);
+
+          if (Number.isNaN(normalizedQuestionId)) {
+            console.warn(
+              "Skipping question with non-numeric identifier during submit:",
+              questionIdValue
+            );
+            continue;
+          }
+
+          const preSubmitRawAnswer =
+            answers[normalizedQuestionId] ??
+            answers[questionIdValue] ??
+            "";
+          const preSubmitAnswer =
+            typeof preSubmitRawAnswer === "string"
+              ? preSubmitRawAnswer
+              : preSubmitRawAnswer != null
+              ? preSubmitRawAnswer.toString()
+              : "";
+
+          await assessmentService.saveProgress({
+            assessmentId: effectiveAssessmentId,
+            questionId: normalizedQuestionId,
+            answer: preSubmitAnswer,
+            files:
+              files[normalizedQuestionId] || files[questionIdValue] || [],
+          });
+        }
+      } catch (saveError) {
+        console.error("❌ Error saving answers before submission:", saveError);
+        setNotification({
+          show: true,
+          message:
+            saveError?.response?.data?.message ||
+            saveError?.message ||
+            "Failed to store answers before submitting. Please try again.",
+          type: "error",
         });
         setTimeout(
           () => setNotification({ show: false, message: "", type: "" }),
