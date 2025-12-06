@@ -146,31 +146,8 @@ function Dashboard() {
             </p>
           </div>
 
-        <div className="grid md:grid-cols-3 grid-cols-1 gap-6 mb-8">
-          <a href="/admin/add-account" className="bg-white rounded-lg shadow-md border-l-4 border-green-500 p-6 hover:shadow-lg transition-shadow cursor-pointer">
-            <div className="flex items-center">
-              <div className="shrink-0 bg-green-100 rounded-md p-3">
-                <svg
-                  className="h-6 w-6 text-green-600"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 6v12m-6-6h12"
-                  />
-                </svg>
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Add New Account</p>
-              </div>
-            </div>
-          </a>
-
-          <div className="bg-white rounded-lg shadow-md border-l-4 border-raimes-red p-6">
+        <div className="grid md:grid-cols-2 grid-cols-1 gap-6 mb-8">
+          <a href="/data-validation" className="bg-white rounded-lg shadow-md border-l-4 border-raimes-red p-6 hover:shadow-lg transition-shadow cursor-pointer">
             <div className="flex items-center">
               <div className="shrink-0 bg-red-100 rounded-md p-3">
                 <svg
@@ -183,18 +160,19 @@ function Dashboard() {
                     strokeLinecap="round"
                     strokeLinejoin="round"
                     strokeWidth={2}
-                    d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"
+                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
                   />
                 </svg>
               </div>
               <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Data Validation Issues</p>
+                <p className="text-sm font-medium text-gray-600">Validate Questionnaires</p>
                 <p className="text-2xl font-bold text-gray-900">
                   {stats.invalidData}
                 </p>
+                <p className="text-xs text-gray-500 mt-1">Review & approve answers</p>
               </div>
             </div>
-          </div>
+          </a>
 
           <div className="bg-white rounded-lg shadow-md border-l-4 border-raimes-yellow p-6">
             <div className="flex items-center">
@@ -297,17 +275,20 @@ function Dashboard() {
                       </td>
                       <td className="px-6 py-4">
                         {actionBtn.style === "yellow" && (
-                          <button 
-                            className="px-6 py-2 bg-raimes-yellow text-white font-semibold rounded-lg hover:opacity-90 transition-opacity"
-                            disabled={actionBtn.disabled}
+                          <a 
+                            href="/data-validation"
+                            className="inline-block px-6 py-2 bg-raimes-yellow text-white font-semibold rounded-lg hover:opacity-90 transition-opacity"
                           >
                             {actionBtn.action}
-                          </button>
+                          </a>
                         )}
                         {actionBtn.style === "yellow-outline" && (
-                          <button className="px-6 py-2 border-2 border-raimes-yellow text-raimes-yellow font-semibold rounded-lg hover:bg-raimes-yellow hover:text-white transition-colors">
+                          <a 
+                            href="/data-validation"
+                            className="inline-block px-6 py-2 border-2 border-raimes-yellow text-raimes-yellow font-semibold rounded-lg hover:bg-raimes-yellow hover:text-white transition-colors"
+                          >
                             {actionBtn.action}
-                          </button>
+                          </a>
                         )}
                         {actionBtn.style === "gray" && (
                           <button className="px-6 py-2 bg-gray-400 text-white font-semibold rounded-lg cursor-not-allowed">

@@ -146,13 +146,24 @@ const AdminAccountRequestsPage = () => {
       
       <main className="px-8 py-8 max-w-7xl mx-auto">
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold text-raimes-purple mb-2">
-            Account Registration Requests
-          </h1>
-          <p className="text-gray-600">
-            Review and manage user registration requests
-          </p>
+        <div className="mb-8 flex justify-between items-center">
+          <div>
+            <h1 className="text-4xl font-bold text-raimes-purple mb-2">
+              Account Registration Requests
+            </h1>
+            <p className="text-gray-600">
+              Review and manage user registration requests
+            </p>
+          </div>
+          <a
+            href="/admin/add-account"
+            className="px-6 py-3 bg-raimes-purple text-white font-semibold rounded-lg hover:bg-opacity-90 transition-all flex items-center gap-2 shadow-lg hover:shadow-xl"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+            </svg>
+            Add New Account
+          </a>
         </div>
 
         {/* Error Message */}
