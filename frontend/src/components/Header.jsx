@@ -70,27 +70,16 @@ export default function Header({ useRootAnchors = false } = {}) {
             </motion.div>
           ))}
         </nav>
-        <div className="flex items-center gap-4">
-          <div className="w-1 h-12 bg-raimes-yellow"></div>
-          <motion.div variants={fadeIn} className="flex gap-3">
-            <motion.div whileHover={{ y: -2 }} whileTap={{ scale: 0.98 }}>
-              <Link
-                to="/login"
-                className="px-4 py-2 border-2 border-white text-white font-semibold rounded-lg hover:bg-white hover:text-raimes-purple transition-colors"
-              >
-                Login
-              </Link>
-            </motion.div>
-            <motion.div whileHover={{ y: -2 }} whileTap={{ scale: 0.98 }}>
-              <Link
-                to="/register"
-                className="px-4 py-2 bg-raimes-yellow text-white font-semibold rounded-lg hover:opacity-90 transition-opacity"
-              >
-                Register
-              </Link>
-            </motion.div>
+        <motion.div variants={fadeIn}>
+          <motion.div whileHover={{ y: -2 }} whileTap={{ scale: 0.98 }}>
+            <Link
+              to="/login"
+              className="px-6 py-2 bg-raimes-yellow text-blue font-semibold rounded-lg hover:opacity-90 transition-opacity"
+            >
+              Login
+            </Link>
           </motion.div>
-        </div>
+        </motion.div>
       </div>
     </motion.header>
   );

@@ -1367,6 +1367,7 @@ export const getAssessmentScoringResult = async (req: AuthRequest, res: Response
   try {
     const { assessmentId } = req.params;
     const userId = req.user?.userID;
+    const userRole = req.user?.role;
 
     if (!assessmentId || !userId) {
       res.status(400).json({
@@ -1376,22 +1377,47 @@ export const getAssessmentScoringResult = async (req: AuthRequest, res: Response
       return;
     }
 
-    // Verify user owns this assessment
-    const verifyQuery = `
-      SELECT 
-        a.assessmentid,
-        a.finalscore,
-        a.scoringdetails,
-        a.status,
-        c.companyname,
-        q.questionnairename
-      FROM Assessment a
-      JOIN Company c ON a.companyid = c.companyid
-      JOIN Questionnaire q ON a.questionnaireid = q.questionnaireid
-      WHERE a.assessmentid = $1 AND c.userid = $2
-    `;
+    // Verify user owns this assessment OR is admin/auditor
+    let verifyQuery: string;
+    let queryParams: any[];
 
-    const verifyResult = await pool.query(verifyQuery, [assessmentId, userId]);
+    if (userRole === 'admin' || userRole === 'auditor') {
+      // Admin/Auditor can view any assessment
+      verifyQuery = `
+        SELECT 
+          a.assessmentid,
+          a.finalscore,
+          a.scoringdetails,
+          a.status,
+          a.completiondate,
+          c.companyname,
+          q.questionnairename
+        FROM Assessment a
+        JOIN Company c ON a.companyid = c.companyid
+        JOIN Questionnaire q ON a.questionnaireid = q.questionnaireid
+        WHERE a.assessmentid = $1
+      `;
+      queryParams = [assessmentId];
+    } else {
+      // Regular user can only view their own assessment
+      verifyQuery = `
+        SELECT 
+          a.assessmentid,
+          a.finalscore,
+          a.scoringdetails,
+          a.status,
+          a.completiondate,
+          c.companyname,
+          q.questionnairename
+        FROM Assessment a
+        JOIN Company c ON a.companyid = c.companyid
+        JOIN Questionnaire q ON a.questionnaireid = q.questionnaireid
+        WHERE a.assessmentid = $1 AND c.userid = $2
+      `;
+      queryParams = [assessmentId, userId];
+    }
+
+    const verifyResult = await pool.query(verifyQuery, queryParams);
     
     if (verifyResult.rows.length === 0) {
       res.status(403).json({
@@ -1419,6 +1445,7 @@ export const getAssessmentScoringResult = async (req: AuthRequest, res: Response
         questionnairename: assessment.questionnairename,
         finalscore: assessment.finalscore,
         status: assessment.status,
+        completiondate: assessment.completiondate,
         scoring: JSON.parse(assessment.scoringdetails)
       }
     });

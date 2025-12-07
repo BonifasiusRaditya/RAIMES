@@ -23,6 +23,9 @@ const QuestionnairePage = lazy(() => import("./pages/user/QuestionnairePage"));
 const AssessmentResults = lazy(() =>
   import("./pages/auditor/AssessmentResults")
 );
+const AIAnalysisDetailPage = lazy(() =>
+  import("./pages/auditor/AIAnalysisDetailPage")
+);
 const DataValidation = lazy(() => import("./pages/auditor/DataValidation"));
 const LandingPage = lazy(() => import("./pages/shared/LandingPage"));
 const EditQuestionnaire = lazy(() =>
@@ -158,6 +161,14 @@ function App() {
                 element={
                   <AuditorRoute>
                     <AssessmentResults />
+                  </AuditorRoute>
+                }
+              />
+              <Route
+                path="/ai-analysis/:assessmentId"
+                element={
+                  <AuditorRoute>
+                    <AIAnalysisDetailPage />
                   </AuditorRoute>
                 }
               />
