@@ -126,7 +126,7 @@ export default function LandingPage() {
                 to="/register"
                 className="px-6 py-3 rounded-xl bg-raimes-purple text-white font-semibold shadow-lg shadow-raimes-purple/20 hover:shadow-xl transition-transform hover:-translate-y-0.5"
               >
-                Request a demo
+                Request account
               </Link>
               <Link
                 to="/login"

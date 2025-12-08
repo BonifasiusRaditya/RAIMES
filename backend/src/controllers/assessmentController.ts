@@ -349,6 +349,103 @@ export const saveProgress = async (req: AuthRequest, res: Response): Promise<voi
   }
 };
 
+interface MulterAuthRequest extends AuthRequest {
+  file?: Express.Multer.File;
+}
+
+// Upload evidence file linked to an answer
+export const uploadEvidence = async (req: MulterAuthRequest, res: Response): Promise<void> => {
+  try {
+    const { assessmentId, questionId } = req.body;
+    const userId = req.user?.userID;
+    const file = req.file;
+
+    if (!assessmentId || !questionId || !userId) {
+      res.status(400).json({ success: false, message: 'Missing required data: assessmentId, questionId, or userId' });
+      return;
+    }
+
+    if (!file) {
+      res.status(400).json({ success: false, message: 'No file uploaded' });
+      return;
+    }
+
+    const assessmentIdNum = Number(assessmentId);
+    const questionIdNum = Number(questionId);
+    if (Number.isNaN(assessmentIdNum) || Number.isNaN(questionIdNum)) {
+      res.status(400).json({ success: false, message: 'assessmentId and questionId must be valid numbers' });
+      return;
+    }
+
+    // Verify user company
+    const companyLookup = await pool.query(`SELECT companyid FROM Company WHERE userid = $1 LIMIT 1`, [userId]);
+    if (companyLookup.rows.length === 0) {
+      res.status(404).json({ success: false, message: 'No company associated with this user' });
+      return;
+    }
+    const companyId = companyLookup.rows[0].companyid;
+
+    // Ensure assessment belongs to company
+    const assessmentCheck = await pool.query(
+      `SELECT assessmentid, questionnaireid FROM Assessment WHERE assessmentid = $1 AND companyid = $2 LIMIT 1`,
+      [assessmentIdNum, companyId]
+    );
+    if (assessmentCheck.rows.length === 0) {
+      res.status(404).json({ success: false, message: 'Assessment not found or access denied' });
+      return;
+    }
+
+    // Ensure answer exists (create if missing)
+    const existingAnswer = await pool.query(
+      `SELECT answerid FROM Answer WHERE assessmentid = $1 AND questionid = $2 LIMIT 1`,
+      [assessmentIdNum, questionIdNum]
+    );
+
+    let answerId: number;
+    if (existingAnswer.rows.length === 0) {
+      const insertAnswer = await pool.query(
+        `INSERT INTO Answer (assessmentid, questionid, response) VALUES ($1, $2, $3) RETURNING answerid`,
+        [assessmentIdNum, questionIdNum, '']
+      );
+      answerId = insertAnswer.rows[0].answerid;
+    } else {
+      answerId = existingAnswer.rows[0].answerid;
+    }
+
+    // Store evidence metadata
+    const storagePath = file.path;
+    const fileType = file.mimetype;
+    const fileName = file.originalname;
+
+    const evidenceInsert = await pool.query(
+      `INSERT INTO Evidence (answerid, filename, filetype, storagepath, uploaderid)
+       VALUES ($1, $2, $3, $4, $5)
+       RETURNING evidenceid, uploaddate`,
+      [answerId, fileName, fileType, storagePath, userId]
+    );
+
+    res.status(201).json({
+      success: true,
+      message: 'Evidence uploaded successfully',
+      data: {
+        evidenceId: evidenceInsert.rows[0].evidenceid,
+        answerId,
+        fileName,
+        fileType,
+        storagePath,
+        uploadDate: evidenceInsert.rows[0].uploaddate
+      }
+    });
+  } catch (error) {
+    console.error('Error uploading evidence:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error uploading evidence',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+};
+
 // Update current position when user navigates (without saving answer)
 export const updateCurrentPosition = async (req: AuthRequest, res: Response): Promise<void> => {
   try {

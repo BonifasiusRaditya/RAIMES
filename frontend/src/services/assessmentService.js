@@ -122,12 +122,15 @@ export const assessmentService = {
   },
 
   // Upload evidence file
-  uploadEvidence: async (assessmentId, questionId, file) => {
+  uploadEvidence: async (assessmentId, questionId, file, answerId) => {
     try {
       const formData = new FormData();
       formData.append("evidence", file);
       formData.append("assessmentId", assessmentId);
       formData.append("questionId", questionId);
+      if (answerId) {
+        formData.append("answerId", answerId);
+      }
 
       const response = await api.post(
         "/assessments/upload-evidence",

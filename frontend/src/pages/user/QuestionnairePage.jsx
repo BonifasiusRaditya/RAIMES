@@ -298,6 +298,39 @@ function QuestionnairePage() {
 
         if (progressResponse.success) {
           const newProgress = progressResponse.data.progressPercentage || 0;
+          const answerIdFromSave = progressResponse.data.answerId;
+
+          // Upload evidence files if any
+          const pendingFiles = files[normalizedQuestionId] || files[currentQuestionId] || [];
+          if (pendingFiles.length > 0) {
+            try {
+              await Promise.all(
+                pendingFiles.map((file) =>
+                  assessmentService.uploadEvidence(
+                    effectiveAssessmentId,
+                    normalizedQuestionId,
+                    file,
+                    answerIdFromSave
+                  )
+                )
+              );
+              setFiles((prev) => ({ ...prev, [normalizedQuestionId]: [] }));
+            } catch (uploadErr) {
+              console.error("Error uploading evidence:", uploadErr);
+              setNotification({
+                show: true,
+                message:
+                  uploadErr?.response?.data?.message ||
+                  "Evidence uploaded partially or failed. Please retry.",
+                type: "error",
+              });
+              setTimeout(
+                () => setNotification({ show: false, message: "", type: "" }),
+                6000
+              );
+            }
+          }
+
           setProgressPercentage(newProgress);
           setNotification({
             show: true,
@@ -638,7 +671,7 @@ function QuestionnairePage() {
             }`}
           >
             <div className="flex items-start">
-              <div className="flex-shrink-0">
+              <div className="shrink-0">
                 {notification.type === "success" && (
                   <svg
                     className="h-5 w-5 text-green-500"
@@ -696,7 +729,7 @@ function QuestionnairePage() {
                 onClick={() =>
                   setNotification({ show: false, message: "", type: "" })
                 }
-                className="ml-4 flex-shrink-0"
+                className="ml-4 shrink-0"
               >
                 <svg
                   className="h-4 w-4 text-gray-400 hover:text-gray-600"
@@ -1152,7 +1185,7 @@ function QuestionnairePage() {
           {/* Help Section */}
           <div className="mt-8 p-4 bg-blue-50 border border-blue-200 rounded-lg">
             <div className="flex items-start">
-              <div className="flex-shrink-0">
+              <div className="shrink-0">
                 <svg
                   className="h-5 w-5 text-blue-400 mt-0.5"
                   fill="currentColor"
