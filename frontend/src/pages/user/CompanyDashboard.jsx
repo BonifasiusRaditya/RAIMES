@@ -519,7 +519,7 @@ const CompanyDashboard = () => {
                             <button
                               className="text-raimes-purple hover:opacity-80 font-medium"
                               onClick={() =>
-                                alert("View results feature coming soon!")
+                                window.location.href = `/assessment-results/${assessment.assessmentId}`
                               }
                             >
                               View Results

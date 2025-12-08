@@ -846,7 +846,10 @@ export const getMyAssessmentResults = async (req: AuthRequest, res: Response): P
       const { assessmentId } = req.params;
       const userId = req.user?.userID;
 
+      console.log('🔍 getAssessmentDetail called with:', { assessmentId, userId });
+
       if (!userId || !assessmentId) {
+        console.log('❌ Missing required data:', { userId, assessmentId });
         res.status(400).json({
           success: false,
           message: 'Missing required data'
@@ -862,8 +865,11 @@ export const getMyAssessmentResults = async (req: AuthRequest, res: Response): P
       `;
     
       const userCompanyResult = await pool.query(userCompanyQuery, [userId]);
+      
+      console.log('✅ User company result:', userCompanyResult.rows);
     
       if (userCompanyResult.rows.length === 0) {
+        console.log('❌ No company found for user:', userId);
         res.status(404).json({
           success: false,
           message: 'No company associated with this user'
@@ -893,7 +899,10 @@ export const getMyAssessmentResults = async (req: AuthRequest, res: Response): P
     
       const assessmentResult = await pool.query(assessmentQuery, [parseInt(assessmentId), companyId]);
 
+      console.log('✅ Assessment result:', assessmentResult.rows);
+
       if (assessmentResult.rows.length === 0) {
+        console.log('❌ Assessment not found or access denied:', { assessmentId, companyId });
         res.status(404).json({
           success: false,
           message: 'Assessment not found or access denied'
@@ -907,16 +916,14 @@ export const getMyAssessmentResults = async (req: AuthRequest, res: Response): P
       const questionsQuery = `
         SELECT 
           q.questionid,
-          q.questiontext,
+          q.text as questiontext,
           q.category,
-          q.questiontype,
+          q.type as questiontype,
           q.options,
           q.weight,
-          q.evidencerequired,
+          q.require_evidence as evidencerequired,
           a.answerid,
-          a.response,
-          a.evidencepath,
-          a.score
+          a.response
         FROM Question q
         LEFT JOIN Answer a ON q.questionid = a.questionid AND a.assessmentid = $1
         WHERE q.questionnaireid = $2
@@ -928,10 +935,11 @@ export const getMyAssessmentResults = async (req: AuthRequest, res: Response): P
         assessment.questionnaireid
       ]);
 
+      console.log('✅ Questions result count:', questionsResult.rows.length);
+
       // Group questions by category
       const questionsByCategory: Record<string, any[]> = {};
       let totalAnswered = 0;
-      let totalScore = 0;
       let maxScore = 0;
 
       questionsResult.rows.forEach((row: any) => {
@@ -949,16 +957,11 @@ export const getMyAssessmentResults = async (req: AuthRequest, res: Response): P
           weight: row.weight,
           evidenceRequired: row.evidencerequired,
           answer: row.response,
-          evidencePath: row.evidencepath,
-          score: row.score,
           answered: !!row.answerid
         });
 
         if (row.answerid) {
           totalAnswered++;
-          if (row.score !== null) {
-            totalScore += parseFloat(row.score);
-          }
         }
       
         maxScore += parseInt(row.weight) || 10;
@@ -985,7 +988,6 @@ export const getMyAssessmentResults = async (req: AuthRequest, res: Response): P
           progressPercentage,
           totalQuestions,
           answeredQuestions: totalAnswered,
-          calculatedScore: maxScore > 0 ? Math.round((totalScore / maxScore) * 100) : 0,
           questionsByCategory
         }
       });

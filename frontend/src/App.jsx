@@ -41,6 +41,9 @@ const ResourcesPage = lazy(() => import("./pages/user/ResourcesPage"));
 const AssessmentDetailPage = lazy(() =>
   import("./pages/user/AssessmentDetailPage")
 );
+const AssessmentResultsPage = lazy(() =>
+  import("./pages/user/AssessmentResultsPage")
+);
 import { useAuth } from "./context/AuthContext";
 
 // Loading component
@@ -145,6 +148,14 @@ function App() {
                 element={
                   <ProtectedRoute>
                     <AssessmentDetailPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/assessment-results/:assessmentId"
+                element={
+                  <ProtectedRoute>
+                    <AssessmentResultsPage />
                   </ProtectedRoute>
                 }
               />

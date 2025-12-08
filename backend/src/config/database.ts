@@ -53,7 +53,8 @@ pool.on('connect', () => {
 
 pool.on('error', (err) => {
     console.error('❌ Unexpected error on idle client', err);
-    process.exit(-1);
+    // Don't crash the entire process on idle client errors
+    // These can happen with remote databases and should be handled gracefully
 });
 
 export default pool;

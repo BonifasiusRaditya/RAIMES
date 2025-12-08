@@ -313,9 +313,17 @@ export default function ResultsPage() {
               <div className="flex gap-3 pt-4 border-t border-gray-200">
                 <button
                   onClick={() =>
-                    navigate(`/questionnaire/${result.questionnaireId}`)
+                    navigate(`/assessment-results/${result.assessmentId}`)
                   }
                   className="bg-raimes-purple hover:opacity-90 text-white font-semibold px-4 py-2 rounded-lg transition-colors"
+                >
+                  View Results
+                </button>
+                <button
+                  onClick={() =>
+                    navigate(`/questionnaire/${result.questionnaireId}`)
+                  }
+                  className="bg-gray-600 hover:bg-gray-700 text-white font-semibold px-4 py-2 rounded-lg transition-colors"
                 >
                   View Assessment
                 </button>

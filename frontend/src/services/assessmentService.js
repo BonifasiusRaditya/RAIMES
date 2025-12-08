@@ -182,10 +182,14 @@ export const assessmentService = {
   // Get assessment detail with questions and answers
   getAssessmentDetail: async (assessmentId) => {
     try {
+      console.log('📡 Fetching assessment detail for ID:', assessmentId);
       const response = await api.get(`/assessments/detail/${assessmentId}`);
+      console.log('✅ Assessment detail response:', response.data);
       return response.data;
     } catch (error) {
-      console.error("Error fetching assessment detail:", error);
+      console.error("❌ Error fetching assessment detail:", error);
+      console.error("Error response:", error.response?.data);
+      console.error("Error status:", error.response?.status);
       throw error;
     }
   },
