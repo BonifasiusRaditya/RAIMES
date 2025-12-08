@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import Navbar from "../../components/Navbar";
 import { assessmentService } from "../../services/assessmentService";
+import jsPDF from "jspdf";
+import "jspdf-autotable";
 
 export default function AssessmentResultsPage() {
   const { assessmentId } = useParams();
@@ -92,7 +94,151 @@ export default function AssessmentResultsPage() {
   };
 
   const downloadPDF = async () => {
-    alert("PDF download functionality will be implemented soon");
+    try {
+      if (!assessment) {
+        alert("Assessment data not loaded yet. Please wait.");
+        return;
+      }
+
+      const doc = new jsPDF();
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const pageHeight = doc.internal.pageSize.getHeight();
+      let yPosition = 20;
+
+      // Header
+      doc.setFontSize(20);
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(91, 33, 182); // Purple color
+      doc.text("Assessment Results Report", pageWidth / 2, yPosition, { align: "center" });
+      
+      yPosition += 10;
+      doc.setFontSize(14);
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(0, 0, 0);
+      doc.text(assessment.questionnaireTitle || "Assessment", pageWidth / 2, yPosition, { align: "center" });
+      
+      yPosition += 15;
+
+      // Assessment Information
+      doc.setFontSize(12);
+      doc.setFont("helvetica", "bold");
+      doc.text("Assessment Information", 14, yPosition);
+      yPosition += 7;
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(10);
+      
+      // Simple text-based info (avoiding autoTable for now)
+      doc.text(`Assessment ID: #${assessment.assessmentId}`, 14, yPosition);
+      yPosition += 5;
+      doc.text(`Questionnaire ID: #${assessment.questionnaireId}`, 14, yPosition);
+      yPosition += 5;
+      doc.text(`Company: ${assessment.companyName}`, 14, yPosition);
+      yPosition += 5;
+      doc.text(`Status: ${assessment.status?.toUpperCase()}`, 14, yPosition);
+      yPosition += 5;
+      doc.text(`Started: ${formatDate(assessment.startDate)}`, 14, yPosition);
+      yPosition += 5;
+      doc.text(`Completed: ${assessment.completionDate ? formatDate(assessment.completionDate) : 'N/A'}`, 14, yPosition);
+      yPosition += 5;
+      doc.text(`Final Score: ${assessment.finalScore ? parseFloat(assessment.finalScore).toFixed(1) : 'N/A'}/100`, 14, yPosition);
+      yPosition += 5;
+      doc.text(`Progress: ${assessment.progressPercentage}%`, 14, yPosition);
+      yPosition += 10;
+
+      // Summary Statistics
+      doc.setFontSize(12);
+      doc.setFont("helvetica", "bold");
+      doc.text("Summary", 14, yPosition);
+      yPosition += 7;
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(10);
+      doc.text(`Total Questions: ${assessment.totalQuestions || 0}`, 14, yPosition);
+      yPosition += 5;
+      doc.text(`Questions Answered: ${assessment.answeredQuestions || 0}`, 14, yPosition);
+      yPosition += 5;
+      doc.text(`Completion Rate: ${assessment.progressPercentage}%`, 14, yPosition);
+      yPosition += 10;
+
+      // Questions by Category
+      const categories = Object.entries(assessment.questionsByCategory || {});
+      
+      for (const [category, questions] of categories) {
+        // Check if need new page
+        if (yPosition > pageHeight - 40) {
+          doc.addPage();
+          yPosition = 20;
+        }
+
+        doc.setFontSize(12);
+        doc.setFont("helvetica", "bold");
+        doc.setTextColor(91, 33, 182);
+        doc.text(`${category} (${questions.filter(q => q.answered).length}/${questions.length})`, 14, yPosition);
+        yPosition += 7;
+        doc.setTextColor(0, 0, 0);
+
+        // List questions
+        questions.forEach((q, idx) => {
+          if (yPosition > pageHeight - 30) {
+            doc.addPage();
+            yPosition = 20;
+          }
+
+          doc.setFont("helvetica", "bold");
+          doc.setFontSize(10);
+          doc.text(`${idx + 1}. ${q.questionText}`, 14, yPosition);
+          yPosition += 5;
+
+          doc.setFont("helvetica", "normal");
+          doc.setFontSize(9);
+          
+          if (q.answered) {
+            doc.setTextColor(0, 128, 0); // Green
+            const answerText = q.answer || 'No response';
+            const splitAnswer = doc.splitTextToSize(`Answer: ${answerText}`, pageWidth - 28);
+            doc.text(splitAnswer, 18, yPosition);
+            yPosition += splitAnswer.length * 5;
+          } else {
+            doc.setTextColor(255, 0, 0); // Red
+            doc.text('Answer: Not answered', 18, yPosition);
+            yPosition += 5;
+          }
+          
+          doc.setTextColor(0, 0, 0);
+          yPosition += 3;
+        });
+
+        yPosition += 5;
+      }
+
+      // Footer on last page
+      const pageCount = doc.internal.getNumberOfPages();
+      for (let i = 1; i <= pageCount; i++) {
+        doc.setPage(i);
+        doc.setFontSize(8);
+        doc.setTextColor(128, 128, 128);
+        doc.text(
+          `Page ${i} of ${pageCount}`,
+          pageWidth / 2,
+          pageHeight - 10,
+          { align: "center" }
+        );
+        doc.text(
+          `Generated on ${new Date().toLocaleDateString()}`,
+          pageWidth - 14,
+          pageHeight - 10,
+          { align: "right" }
+        );
+      }
+
+      // Save PDF
+      const fileName = `Assessment_${assessment.assessmentId}_${assessment.questionnaireTitle?.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`;
+      doc.save(fileName);
+    } catch (error) {
+      console.error("Error generating PDF:", error);
+      alert(`Failed to generate PDF: ${error.message}. Please try again.`);
+    }
   };
 
   if (loading) {
@@ -291,7 +437,7 @@ export default function AssessmentResultsPage() {
                 {/* Category Header */}
                 <button
                   onClick={() => toggleCategory(category)}
-                  className="w-full px-6 py-4 bg-gradient-to-r from-raimes-purple to-purple-700 text-white flex justify-between items-center hover:shadow-md transition-shadow"
+                  className="w-full px-6 py-4 bg-linear-to-r from-raimes-purple to-purple-700 text-white flex justify-between items-center hover:shadow-md transition-shadow"
                 >
                   <div className="flex items-center gap-3">
                     <span className="font-bold text-lg">{category}</span>

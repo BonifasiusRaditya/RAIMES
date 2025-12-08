@@ -9,6 +9,12 @@
   --color-raimes-red: #FF2600;
 }
 
+body {
+  font-family: 'Poppins', 'Inter', system-ui, -apple-system, sans-serif;
+  background: var(--color-raimes-white);
+  color: #0f172a;
+}
+
 @keyframes slideDown {
   from {
     opacity: 0;
@@ -54,4 +60,15 @@
 
 .hover\:scale-98:hover {
   transform: scale(0.98);
+}
+
+.bg-radial-spot {
+  background:
+    radial-gradient(circle at 20% 20%, rgba(255, 193, 7, 0.18), transparent 35%),
+    radial-gradient(circle at 80% 0%, rgba(68, 64, 255, 0.12), transparent 30%),
+    linear-gradient(180deg, #f6f6ff 0%, #ffffff 100%);
+}
+
+.bg-gradient-card {
+  background: linear-gradient(145deg, #f9f7ff 0%, #eef2ff 45%, #ffffff 100%);
 }

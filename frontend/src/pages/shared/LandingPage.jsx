@@ -2,20 +2,19 @@ import React, { useMemo } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { Link } from "react-router-dom";
 import Header from "../../components/Header";
-import { Droplets, Zap, Shield, Wind } from "lucide-react";
+import { Droplets, Zap, Shield, Wind, Leaf, BarChart3, Sparkles } from "lucide-react";
 
 export default function LandingPage() {
   const prefersReducedMotion = useReducedMotion();
 
-  // Memoized variants to prevent recalculation
   const variants = useMemo(
     () => ({
       fadeInUp: {
-        hidden: { opacity: 0, y: prefersReducedMotion ? 0 : 24 },
+        hidden: { opacity: 0, y: prefersReducedMotion ? 0 : 22 },
         visible: {
           opacity: 1,
           y: 0,
-          transition: { duration: 0.6, ease: [0.22, 1, 0.36, 1] },
+          transition: { duration: 0.5, ease: [0.22, 1, 0.36, 1] },
         },
       },
       staggerChildren: {
@@ -26,7 +25,7 @@ export default function LandingPage() {
       },
       scaleIn: {
         hidden: { opacity: 0, scale: prefersReducedMotion ? 1 : 0.96 },
-        visible: { opacity: 1, scale: 1, transition: { duration: 0.4 } },
+        visible: { opacity: 1, scale: 1, transition: { duration: 0.35 } },
       },
     }),
     [prefersReducedMotion]
@@ -36,366 +35,305 @@ export default function LandingPage() {
   const staggerChildren = variants.staggerChildren;
   const scaleIn = variants.scaleIn;
 
-  // Eco Ratings with icons and colors
   const ecoRatings = useMemo(
     () => [
-      {
-        label: "Water",
-        val: "92%",
-        icon: Droplets,
-        color: "text-blue-400",
-        bgColor: "bg-blue-500/20",
-      },
-      {
-        label: "Energy",
-        val: "88%",
-        icon: Zap,
-        color: "text-yellow-400",
-        bgColor: "bg-yellow-500/20",
-      },
-      {
-        label: "Safety",
-        val: "95%",
-        icon: Shield,
-        color: "text-emerald-400",
-        bgColor: "bg-emerald-500/20",
-      },
-      {
-        label: "Emissions",
-        val: "85%",
-        icon: Wind,
-        color: "text-purple-400",
-        bgColor: "bg-purple-500/20",
-      },
+      { label: "Water", val: "92%", icon: Droplets, color: "text-sky-300" },
+      { label: "Energy", val: "88%", icon: Zap, color: "text-amber-300" },
+      { label: "Safety", val: "95%", icon: Shield, color: "text-emerald-300" },
+      { label: "Emissions", val: "85%", icon: Wind, color: "text-violet-300" },
     ],
     []
   );
 
+  const featureCards = [
+    {
+      title: "AI scoring you can trust",
+      copy: "Weighted scores, transparent logic, and instant insights for every site.",
+      icon: BarChart3,
+    },
+    {
+      title: "Evidence-first workflow",
+      copy: "Upload proofs, validate claims, and keep auditors aligned in one place.",
+      icon: Shield,
+    },
+    {
+      title: "Sustainability playbooks",
+      copy: "Prebuilt questionnaires and guidance tailored to responsible mining.",
+      icon: Leaf,
+    },
+  ];
+
+  const steps = [
+    {
+      title: "Map your operation",
+      body: "Start with a curated questionnaire built for mining sustainability.",
+    },
+    {
+      title: "Submit evidence",
+      body: "Attach documents, photos, or reports to validate every response.",
+    },
+    {
+      title: "See the score",
+      body: "AI weights answers, highlights gaps, and shows progress instantly.",
+    },
+    {
+      title: "Act with clarity",
+      body: "Download reports, brief stakeholders, and track improvements over time.",
+    },
+  ];
+
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col bg-raimes-white">
       <Header />
 
       {/* Hero */}
-      <section
-        className="px-8 py-12 bg-cover bg-center bg-no-repeat relative"
-        style={{
-          backgroundColor: "#F6F6FF",
-        }}
-      >
-        <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-10 items-center">
+      <section className="relative overflow-hidden">
+        <div className="absolute inset-0 bg-radial-spot" aria-hidden />
+        <div className="absolute -left-16 -top-10 h-56 w-56 rounded-full bg-amber-200/30 blur-3xl" aria-hidden />
+        <div className="absolute -right-20 bottom-0 h-64 w-64 rounded-full bg-indigo-200/25 blur-3xl" aria-hidden />
+
+        <div className="max-w-6xl mx-auto px-6 pt-14 pb-16 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center relative">
           <motion.div
             initial="hidden"
             whileInView="visible"
-            viewport={{ once: true, amount: 0.3 }}
+            viewport={{ once: true, amount: 0.35 }}
             variants={staggerChildren}
           >
             <motion.div
               variants={fadeInUp}
-              className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/20 backdrop-blur-md text-green-200 text-sm font-medium border border-white/30"
+              className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white text-raimes-purple text-xs font-semibold shadow-sm border border-raimes-purple/10"
             >
-              Certified Sustainability Platform
+              <Sparkles className="w-4 h-4 text-raimes-purple" /> Responsible AI Mining
             </motion.div>
+
             <motion.h1
               variants={fadeInUp}
-              className="mt-4 text-5xl font-extrabold text-black leading-tight drop-shadow-lg"
+              className="mt-4 text-4xl md:text-5xl font-black text-raimes-purple leading-tight tracking-tight"
             >
-              Transform Mining into{" "}
-              <span className="text-raimes-yellow">Sustainable</span> Future
+              Transform mining into a
+              <span className="block text-raimes-yellow drop-shadow-sm">sustainable future</span>
             </motion.h1>
+
             <motion.p
               variants={fadeInUp}
-              className="mt-4 text-gray-100 text-lg"
+              className="mt-4 text-lg text-slate-700 max-w-xl"
             >
-              Real-time integrated management system for comprehensive
-              responsible AI mining rating. Monitor, analyze, and improve
-              performance with data-driven insights.
+              Monitor, analyze, and improve ESG performance with AI-driven scoring, evidence validation, and stakeholder-ready reports.
             </motion.p>
+
+            <motion.div variants={fadeInUp} className="mt-8 flex gap-3 flex-wrap">
+              <Link
+                to="/register"
+                className="px-6 py-3 rounded-xl bg-raimes-purple text-white font-semibold shadow-lg shadow-raimes-purple/20 hover:shadow-xl transition-transform hover:-translate-y-0.5"
+              >
+                Request a demo
+              </Link>
+              <Link
+                to="/login"
+                className="px-6 py-3 rounded-xl border border-raimes-purple text-raimes-purple font-semibold bg-white/70 backdrop-blur hover:bg-white transition-colors"
+              >
+                Login
+              </Link>
+            </motion.div>
+
             <motion.div
               variants={fadeInUp}
-              className="mt-8 flex gap-4 items-center"
+              className="mt-10 grid grid-cols-2 sm:grid-cols-3 gap-4 max-w-xl"
             >
-              <motion.div
-                whileHover={prefersReducedMotion ? {} : { y: -2, scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-              >
-                <Link
-                  to="/login"
-                  className="px-8 py-4 text-lg bg-raimes-yellow text-white font-bold rounded-lg hover:bg-raimes-yellow/90 shadow-lg hover:shadow-xl transition-all"
+              {["150+ mining sites", "25+ KPIs tracked", "99% compliance"].map((item) => (
+                <div
+                  key={item}
+                  className="rounded-2xl border border-raimes-purple/10 bg-white shadow-sm px-4 py-3 text-sm font-semibold text-raimes-purple/80"
                 >
-                  Get Started Free
-                </Link>
-              </motion.div>
+                  {item}
+                </div>
+              ))}
             </motion.div>
           </motion.div>
 
-          {/* ECO RATING BANNER (DIPERBAIKI DENGAN GLASSMORPHISM) */}
           <motion.div
-            className="bg-raimes-purple/90 backdrop-blur-xl rounded-2xl shadow-2xl p-6 border border-raimes-yellow hover:bg-raimes-purple transition"
+            className="relative"
             initial="hidden"
             whileInView="visible"
-            viewport={{ once: true, amount: 0.2 }}
+            viewport={{ once: true, amount: 0.25 }}
             variants={scaleIn}
           >
-            <h3 className="text-raimes-yellow font-semibold mb-4 drop-shadow-md">
-              Eco Rating
-            </h3>
-            <motion.div
-              className="grid grid-cols-2 gap-4"
-              variants={staggerChildren}
-              initial="hidden"
-              animate="visible"
-            >
-              {ecoRatings.map(({ label, val, icon: Icon, color, bgColor }) => (
-                <motion.div
-                  key={label}
-                  variants={fadeInUp}
-                  whileHover={prefersReducedMotion ? {} : { scale: 1.03 }}
-                  className="bg-gray-800 backdrop-blur-md rounded-xl p-4 border border-raimes-yellow/50 hover:border-raimes-yellow transition shadow-lg"
-                >
-                  <div className="flex items-center gap-2 mb-2">
-                    <Icon className={`${color} w-5 h-5`} />
-                    <div className="text-sm text-white font-medium">
-                      {label}
-                    </div>
+            <div className="rounded-3xl bg-white/85 backdrop-blur-xl border border-raimes-purple/10 shadow-2xl shadow-raimes-purple/15 p-6 flex flex-col gap-4">
+              <div>
+                <p className="text-sm text-slate-500">Assessment highlights</p>
+                <p className="text-xl font-bold text-raimes-purple">What teams get</p>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {["Weighted AI scoring", "Evidence-first validation", "Stakeholder-ready PDF", "Progress tracking"].map((item) => (
+                  <div
+                    key={item}
+                    className="rounded-2xl border border-raimes-purple/10 bg-gradient-card shadow-md px-4 py-3 text-raimes-purple font-semibold"
+                  >
+                    {item}
                   </div>
-                  <div className="text-2xl font-bold text-raimes-yellow drop-shadow-sm">
-                    {val}
+                ))}
+              </div>
+
+              <div className="grid grid-cols-3 gap-3 text-center">
+                {[{ label: "Assessments", value: "120+" }, { label: "Avg. completion", value: "92%" }, { label: "Reports shipped", value: "250+" }].map((stat) => (
+                  <div key={stat.label} className="rounded-2xl border border-raimes-purple/10 bg-white shadow-sm py-3 px-2">
+                    <div className="text-lg font-black text-raimes-purple">{stat.value}</div>
+                    <div className="text-xs text-slate-500">{stat.label}</div>
                   </div>
-                </motion.div>
-              ))}
-            </motion.div>
+                ))}
+              </div>
+            </div>
           </motion.div>
         </div>
       </section>
 
-      {/* Counters */}
-      <section className="px-8 py-10 bg-raimes-purple">
-        <motion.div
-          className="max-w-6xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-6 text-center"
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true, amount: 0.3 }}
-          variants={staggerChildren}
-        >
-          {[
-            ["150+", "Mining Sites"],
-            ["25+", "KPIs Tracked"],
-            ["40%", "CO₂ Reduction"],
-            ["99%", "Compliance Rate"],
-          ].map(([num, label]) => (
-            <motion.div key={label} variants={fadeInUp}>
-              <div className="text-4xl font-extrabold text-raimes-yellow drop-shadow-md">
-                {num}
+      {/* Feature trio */}
+      <section className="bg-raimes-purple text-white">
+        <div className="max-w-6xl mx-auto px-6 py-12 grid grid-cols-1 md:grid-cols-3 gap-6">
+          {featureCards.map(({ title, copy, icon: Icon }) => (
+            <motion.div
+              key={title}
+              className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur shadow-lg p-6"
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true, amount: 0.25 }}
+              variants={fadeInUp}
+            >
+              <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center mb-4">
+                <Icon className="w-5 h-5 text-raimes-yellow" />
               </div>
-              <div className="text-white font-medium">{label}</div>
+              <h3 className="text-lg font-semibold">{title}</h3>
+              <p className="text-sm text-indigo-100 mt-2 leading-relaxed">{copy}</p>
             </motion.div>
           ))}
-        </motion.div>
+        </div>
       </section>
 
-      {/* Features Grid */}
-      <section
-        id="features"
-        className="px-8 py-12 bg-cover bg-center bg-no-repeat"
-        style={{
-          backgroundColor: "#F6F6FF",
-        }}
-      >
-        <div className="max-w-6xl mx_auto"></div>
-        <div className="max-w-6xl mx-auto">
+      {/* Features grid */}
+      <section id="features" className="bg-raimes-white">
+        <div className="max-w-6xl mx-auto px-6 py-14">
           <motion.h2
-            className="text-3xl font-bold text-black text-center drop-shadow-lg"
+            className="text-3xl font-black text-raimes-purple text-center"
             initial="hidden"
             whileInView="visible"
-            viewport={{ once: true, amount: 0.3 }}
+            viewport={{ once: true, amount: 0.25 }}
             variants={fadeInUp}
           >
-            Comprehensive AI-Powered{" "}
-            <span className="text-raimes-yellow">Mining Assessment</span>
+            Comprehensive, AI-powered mining assessment
           </motion.h2>
           <motion.p
-            className="text-center text-black mt-2 drop-shadow-md font-medium"
+            className="text-center text-slate-600 mt-2"
             initial="hidden"
             whileInView="visible"
-            viewport={{ once: true, amount: 0.3 }}
+            viewport={{ once: true, amount: 0.25 }}
             variants={fadeInUp}
           >
-            Intelligent evaluation system to assess and improve your mining
-            sustainability practices.
+            Everything you need to audit ESG performance, validate evidence, and brief stakeholders.
           </motion.p>
+
           <motion.div
-            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-8"
+            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-10"
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true, amount: 0.2 }}
             variants={staggerChildren}
           >
-            {[
-              [
-                "Questionnaire-Based Assessment",
-                "Comprehensive self-assessment questionnaires covering all aspects of responsible mining practices.",
-              ],
-              [
-                "AI-Powered Evaluation",
-                "Advanced AI algorithms analyze your responses and evidence to generate accurate sustainability scores.",
-              ],
-              [
-                "Evidence Validation",
-                "Upload and submit supporting documents to validate your mining practices and compliance.",
-              ],
-              [
-                "Real-Time Scoring",
-                "Get instant feedback on your assessment with weighted scoring based on question importance.",
-              ],
-              [
-                "Progress Tracking",
-                "Monitor your assessment completion status and track improvements over time.",
-              ],
-              [
-                "Detailed Reports",
-                "Receive comprehensive evaluation reports highlighting strengths and areas for improvement.",
-              ],
-            ].map(([title, desc]) => (
+            {["Questionnaire-based assessment", "Real-time scoring", "Evidence validation", "Progress tracking", "Detailed PDF reports", "Stakeholder-friendly summaries"].map((item) => (
               <motion.div
-                key={title}
+                key={item}
                 variants={fadeInUp}
-                whileHover={
-                  prefersReducedMotion
-                    ? {}
-                    : {
-                        y: -4,
-                      }
-                }
-                transition={{ duration: 0.2 }}
-                className="bg-raimes-purple rounded-2xl p-6 shadow-lg border border-raimes-yellow hover:shadow-xl hover:border-raimes-yellow hover:bg-raimes-purple/90 transition"
+                className="rounded-2xl border border-raimes-purple/10 bg-white shadow-sm hover:shadow-md transition-shadow p-5"
               >
-                <h3 className="text-lg font-semibold text-raimes-yellow">
-                  {title}
-                </h3>
-                <p className="text-white mt-2">{desc}</p>
+                <p className="font-semibold text-raimes-purple mb-1">{item}</p>
+                <p className="text-sm text-slate-600">Purpose-built workflows to keep teams aligned and audits quick.</p>
               </motion.div>
             ))}
           </motion.div>
         </div>
       </section>
 
-      {/* Why Choose */}
-      <section id="benefits" className="px-8 py-12 bg-raimes-purple">
-        <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-10 items-start">
-          <motion.div
+      {/* Steps */}
+      <section className="bg-slate-50" id="benefits">
+        <div className="max-w-5xl mx-auto px-6 py-14">
+          <motion.h2
+            className="text-3xl font-black text-raimes-purple text-center"
             initial="hidden"
             whileInView="visible"
-            viewport={{ once: true, amount: 0.3 }}
-            variants={staggerChildren}
+            viewport={{ once: true, amount: 0.25 }}
+            variants={fadeInUp}
           >
-            <motion.h2
-              variants={fadeInUp}
-              className="text-3xl font-bold text-white drop-shadow-md"
-            >
-              Why Choose <span className="text-raimes-yellow">RAIMES</span>?
-            </motion.h2>
-            <motion.ul className="mt-4 space-y-3 text-white font-medium">
-              {[
-                "Continuous Monitoring — get real-time insights 24/7",
-                "Transparent Methodology — standardized framework",
-                "Investor Confidence — stronger ESG ratings",
-                "Competitive Advantage — demonstrate sustainability leadership",
-              ].map((item) => (
-                <motion.li key={item} variants={fadeInUp} className="pl-1">
-                  {item}
-                </motion.li>
-              ))}
-            </motion.ul>
-          </motion.div>
-          <motion.div
-            className="bg-raimes-purple rounded-2xl p-6 border border-raimes-yellow shadow-lg"
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true, amount: 0.2 }}
-            variants={scaleIn}
-          >
-            <h3 className="text-raimes-yellow font-semibold">
-              For Stakeholders
-            </h3>
-            <motion.div
-              className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4"
-              variants={staggerChildren}
-              initial="hidden"
-              animate="visible"
-            >
-              {["Mining Companies", "Regulators", "Investors"].map((s) => (
-                <motion.div
-                  key={s}
-                  variants={fadeInUp}
-                  className="bg-gray-800 rounded-xl p-4 border border-raimes-yellow/50 shadow-sm"
-                >
-                  <div className="text-raimes-yellow font-semibold">{s}</div>
-                  <div className="text-white text-sm mt-1">
-                    Benchmark, monitor compliance, and verify claims with data.
+            From data to decisions in four moves
+          </motion.h2>
+
+          <div className="mt-10 grid grid-cols-1 md:grid-cols-2 gap-6">
+            {steps.map((step, idx) => (
+              <motion.div
+                key={step.title}
+                variants={fadeInUp}
+                initial="hidden"
+                whileInView="visible"
+                viewport={{ once: true, amount: 0.2 }}
+                className="rounded-2xl border border-raimes-purple/10 bg-white p-5 shadow-sm"
+              >
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="w-9 h-9 rounded-xl bg-raimes-purple text-white font-bold flex items-center justify-center">
+                    {idx + 1}
                   </div>
-                </motion.div>
-              ))}
-            </motion.div>
-          </motion.div>
+                  <h3 className="text-lg font-semibold text-raimes-purple">{step.title}</h3>
+                </div>
+                <p className="text-sm text-slate-600 leading-relaxed">{step.body}</p>
+              </motion.div>
+            ))}
+          </div>
         </div>
       </section>
 
       {/* CTA */}
-      <section id="contact" className="px-8 py-14 bg-gray-50 bg-opacity-75">
-        <motion.div
-          className="max-w-5xl mx-auto text-center bg-white rounded-2xl p-10 shadow"
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true, amount: 0.3 }}
-          variants={scaleIn}
-        >
+      <section id="contact" className="bg-raimes-purple text-white">
+        <div className="max-w-5xl mx-auto px-6 py-14 flex flex-col items-center text-center gap-4">
           <motion.h2
+            className="text-3xl font-black"
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, amount: 0.25 }}
             variants={fadeInUp}
-            className="text-3xl font-bold text-raimes-purple"
           >
-            Ready to Transform Your Mining Operations?
+            Ready to raise your ESG game?
           </motion.h2>
-          <motion.p variants={fadeInUp} className="text-gray-700 mt-2">
-            Join mining companies building a sustainable future.
-          </motion.p>
-          <motion.div
+          <motion.p
+            className="text-indigo-100 max-w-2xl"
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, amount: 0.25 }}
             variants={fadeInUp}
-            className="mt-6 flex justify-center gap-4"
           >
-            <motion.div
-              whileHover={prefersReducedMotion ? {} : { y: -2 }}
-              whileTap={{ scale: 0.98 }}
+            Get a guided walkthrough, see how AI scoring works, and align your teams on sustainability goals.
+          </motion.p>
+          <motion.div variants={fadeInUp} className="flex flex-wrap justify-center gap-3 mt-2">
+            <Link
+              to="/register"
+              className="px-6 py-3 rounded-xl bg-white text-raimes-purple font-semibold shadow-lg shadow-black/10 hover:-translate-y-0.5 transition-transform"
             >
-              <Link
-                to="/register"
-                className="px-6 py-3 bg-raimes-purple text-white font-semibold rounded-lg hover:bg-raimes-purple/90 transition-all"
-              >
-                Request an Account
-              </Link>
-            </motion.div>
-            <motion.div
-              whileHover={prefersReducedMotion ? {} : { y: -2 }}
-              whileTap={{ scale: 0.98 }}
+              Request access
+            </Link>
+            <Link
+              to="/login"
+              className="px-6 py-3 rounded-xl border border-white/60 text-white font-semibold hover:bg-white/10 transition-colors"
             >
-              <Link
-                to="/login"
-                className="px-6 py-3 border-2 border-raimes-purple text-raimes-purple font-semibold rounded-lg hover:bg-raimes-purple hover:text-white transition-all"
-              >
-                Contact Admin
-              </Link>
-            </motion.div>
+              Login
+            </Link>
           </motion.div>
-        </motion.div>
+        </div>
       </section>
 
-      {/* Footer */}
       <motion.footer
-        className="px-8 py-6 text-center bg-raimes-purple text-white"
+        className="px-8 py-6 text-center text-slate-500 bg-white"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        transition={{ delay: 0.2 }}
+        transition={{ delay: 0.15 }}
       >
-        © {new Date().getFullYear()} RAIMES
+        © {new Date().getFullYear()} RAIMES. Responsible AI Mining Evaluation System.
       </motion.footer>
     </div>
   );
