@@ -134,12 +134,15 @@ export const assessmentService = {
   },
 
   // Upload evidence file
-  uploadEvidence: async (assessmentId, questionId, file) => {
+  uploadEvidence: async (assessmentId, questionId, file, answerId) => {
     try {
       const formData = new FormData();
       formData.append("evidence", file);
       formData.append("assessmentId", assessmentId);
       formData.append("questionId", questionId);
+      if (answerId) {
+        formData.append("answerId", answerId);
+      }
 
       const response = await api.post(
         "/assessments/upload-evidence",
@@ -194,10 +197,14 @@ export const assessmentService = {
   // Get assessment detail with questions and answers
   getAssessmentDetail: async (assessmentId) => {
     try {
+      console.log('📡 Fetching assessment detail for ID:', assessmentId);
       const response = await api.get(`/assessments/detail/${assessmentId}`);
+      console.log('✅ Assessment detail response:', response.data);
       return response.data;
     } catch (error) {
-      console.error("Error fetching assessment detail:", error);
+      console.error("❌ Error fetching assessment detail:", error);
+      console.error("Error response:", error.response?.data);
+      console.error("Error status:", error.response?.status);
       throw error;
     }
   },

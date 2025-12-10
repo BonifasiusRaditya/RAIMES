@@ -267,10 +267,6 @@ export default function DataValidation() {
                     Reject
                   </button>
                 </div>
-                <p className="text-xs text-gray-500">
-                  Actions are placeholders; hook them to the API when endpoints
-                  are ready.
-                </p>
               </div>
             )}
           </div>

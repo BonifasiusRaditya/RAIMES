@@ -5,7 +5,6 @@ import {
   getAllAssessmentsWithProgress,
   getCurrentAssessment,
   getMyAssessments,
-  getMyAssessmentsByCategory,
   getMyAssessmentResults,
   updateCurrentPosition,
   getAssessmentDetail,
@@ -16,6 +15,27 @@ import {
   getScoringStatistics
 } from '../controllers/assessmentController.js';
 import { authenticateToken } from '../middleware/auth.js';
+import multer from 'multer';
+import path from 'path';
+import fs from 'fs';
+
+// Multer setup for evidence uploads
+const evidenceDir = path.resolve(process.cwd(), 'uploads', 'evidence');
+fs.mkdirSync(evidenceDir, { recursive: true });
+
+const evidenceStorage = multer.diskStorage({
+  destination: (_req, _file, cb) => cb(null, evidenceDir),
+  filename: (_req, file, cb) => {
+    const timestamp = Date.now();
+    const sanitized = file.originalname.replace(/[^a-zA-Z0-9.\-_]/g, '_');
+    cb(null, `${timestamp}-${sanitized}`);
+  }
+});
+
+const evidenceUpload = multer({
+  storage: evidenceStorage,
+  limits: { fileSize: 10 * 1024 * 1024 } // 10MB
+});
 
 const router = Router();
 
@@ -34,43 +54,30 @@ router.use(authenticateToken);
 // Start a new assessment
 router.post('/start', startAssessment);
 
-// Get current assessment progress for a questionnaire
-router.get('/current/:questionnaireId', getCurrentAssessment);
-
-// Update current position without saving answer (for navigation tracking)
-router.put('/position/:questionnaireId', updateCurrentPosition);
-
-// Save progress (called when "Save & Continue" is clicked)
+// POST routes
 router.post('/save-progress', saveProgress);
-
-// Complete assessment (called when "Complete Assessment" is clicked)
 router.post('/complete', completeAssessment);
-
-// Score assessment using AI Engine
 router.post('/score', scoreAssessmentController);
 
-// Get assessment scoring result
-router.get('/:assessmentId/scoring', getAssessmentScoringResult);
-
-// Get scoring statistics for a questionnaire
-router.get('/statistics/:questionnaireId', getScoringStatistics);
-
-// Get user's assessments
+// More specific GET routes (non-parameterized)
 router.get('/my-assessments', getMyAssessments);
-
-// Get user's assessments grouped by category
-router.get('/my-assessments-by-category', getMyAssessmentsByCategory);
 
 // Get user's completed assessment results
 router.get('/results', getMyAssessmentResults);
+router.get('/all', getAllAssessmentsWithProgress);
 
-// Get assessment detail by ID
+// More specific GET routes with path segments
+router.get('/current/:questionnaireId', getCurrentAssessment);
 router.get('/detail/:assessmentId', getAssessmentDetail);
 
-// Get summarized assessment results by ID
+// GET routes with nested paths (before generic /:id routes)
+router.get('/:assessmentId/scoring', getAssessmentScoringResult);
 router.get('/:assessmentId/results', getAssessmentResults);
 
-// Admin/Auditor routes - get all assessments with progress
-router.get('/all', getAllAssessmentsWithProgress);
+// PUT routes
+router.put('/position/:questionnaireId', updateCurrentPosition);
+
+// Get scoring statistics for a questionnaire (generic, placed last to avoid conflicts)
+router.get('/statistics/:questionnaireId', getScoringStatistics);
 
 export default router;

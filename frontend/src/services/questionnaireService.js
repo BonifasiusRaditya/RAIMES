@@ -26,17 +26,6 @@ export const questionnaireService = {
     }
   },
 
-  // Get questionnaires grouped by category
-  getQuestionnairesByCategory: async () => {
-    try {
-      const response = await api.get('/questionnaires/by-category');
-      return response.data;
-    } catch (error) {
-      console.error('Error fetching questionnaires by category:', error);
-      throw error;
-    }
-  },
-
   // Get a single questionnaire by ID (with questions)
   getQuestionnaireById: async (id) => {
     try {

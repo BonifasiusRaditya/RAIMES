@@ -6,8 +6,7 @@ import {
   createQuestionnaire,
   updateQuestionnaire,
   deleteQuestionnaire,
-  getQuestionnaireStats,
-  getQuestionnairesByCategory
+  getQuestionnaireStats
 } from '../controllers/questionnaireController.js';
 
 const router = Router();
@@ -17,9 +16,6 @@ router.get('/test', testQuestionnaires);
 
 // Stats endpoint
 router.get('/stats', getQuestionnaireStats);
-
-// By category endpoint
-router.get('/by-category', getQuestionnairesByCategory);
 
 // CRUD endpoints
 router.get('/', getAllQuestionnaires);

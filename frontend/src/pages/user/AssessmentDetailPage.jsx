@@ -20,12 +20,21 @@ export default function AssessmentDetailPage() {
       setError(null);
       const response = await assessmentService.getAssessmentDetail(assessmentId);
       
-      if (response.success) {
+      console.log('📥 Assessment detail response:', response);
+      
+      if (response && response.success) {
         setAssessment(response.data);
+      } else if (response) {
+        console.error('❌ Response indicated failure:', response.message);
+        setError(response.message || 'Failed to load assessment details');
       }
     } catch (err) {
-      console.error('Error fetching assessment detail:', err);
-      setError('Failed to load assessment details');
+      console.error('❌ Error fetching assessment detail:', err);
+      // err could be a string (from API interceptor) or an error object
+      const errorMsg = typeof err === 'string' 
+        ? err 
+        : (err.response?.data?.message || err.message || 'Failed to load assessment details');
+      setError(errorMsg);
     } finally {
       setLoading(false);
     }
@@ -138,8 +147,8 @@ export default function AssessmentDetailPage() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
           <div className="bg-white rounded-lg shadow-sm p-6">
             <div className="text-sm text-gray-500 mb-1">Final Score</div>
-            <div className={`text-4xl font-bold ${getScoreColor(assessment.finalScore || assessment.calculatedScore)}`}>
-              {(assessment.finalScore || assessment.calculatedScore).toFixed(1)}
+            <div className={`text-4xl font-bold ${getScoreColor(assessment.finalScore)}`}>
+              {assessment.finalScore ? parseFloat(assessment.finalScore).toFixed(1) : 'N/A'}
             </div>
           </div>
           <div className="bg-white rounded-lg shadow-sm p-6">
@@ -195,22 +204,9 @@ export default function AssessmentDetailPage() {
                         <div className="bg-gray-50 p-3 rounded">
                           <p className="text-gray-900">{question.answer || 'No response'}</p>
                         </div>
-                        
-                        {question.evidencePath && (
-                          <div className="mt-2 flex items-center text-sm text-green-600">
-                            <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                            </svg>
-                            Evidence uploaded
-                          </div>
-                        )}
-                        
-                        {question.score !== null && question.score !== undefined && (
-                          <div className="mt-2">
-                            <span className="text-sm font-semibold">Score: </span>
-                            <span className={`text-sm font-bold ${getScoreColor((question.score / question.weight) * 100)}`}>
-                              {question.score}/{question.weight}
-                            </span>
+                        {question.answeredAt && (
+                          <div className="mt-2 text-xs text-gray-500">
+                            Answered on {new Date(question.answeredAt).toLocaleDateString()}
                           </div>
                         )}
                       </div>

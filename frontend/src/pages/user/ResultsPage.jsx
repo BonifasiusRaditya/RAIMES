@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Navbar from "../../components/Navbar";
 import { assessmentService } from "../../services/assessmentService";
+import jsPDF from "jspdf";
+import "jspdf-autotable";
 
 export default function ResultsPage() {
   const navigate = useNavigate();
@@ -96,9 +98,130 @@ export default function ResultsPage() {
     });
   };
 
-  const handleDownloadReport = (resultId) => {
-    // TODO: Implement PDF download logic with real backend API
-    alert(`PDF download will be implemented soon for assessment ${resultId}`);
+  const handleDownloadReport = async (assessmentId) => {
+    try {
+      // Fetch full assessment details
+      const response = await assessmentService.getAssessmentDetail(assessmentId);
+      
+      if (!response || !response.success) {
+        alert("Failed to load assessment details for PDF generation.");
+        return;
+      }
+
+      const assessment = response.data;
+      const doc = new jsPDF();
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const pageHeight = doc.internal.pageSize.getHeight();
+      let yPosition = 20;
+
+      // Header
+      doc.setFontSize(20);
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(91, 33, 182);
+      doc.text("Assessment Results Report", pageWidth / 2, yPosition, { align: "center" });
+      
+      yPosition += 10;
+      doc.setFontSize(14);
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(0, 0, 0);
+      doc.text(assessment.questionnaireTitle || "Assessment", pageWidth / 2, yPosition, { align: "center" });
+      
+      yPosition += 15;
+
+      // Assessment Information
+      doc.setFontSize(12);
+      doc.setFont("helvetica", "bold");
+      doc.text("Assessment Information", 14, yPosition);
+      yPosition += 7;
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(10);
+      
+      // Simple text-based info (no autoTable)
+      doc.text(`Assessment ID: #${assessment.assessmentId}`, 14, yPosition);
+      yPosition += 5;
+      doc.text(`Company: ${assessment.companyName}`, 14, yPosition);
+      yPosition += 5;
+      doc.text(`Status: ${assessment.status?.toUpperCase()}`, 14, yPosition);
+      yPosition += 5;
+      doc.text(`Final Score: ${assessment.finalScore ? parseFloat(assessment.finalScore).toFixed(1) : 'N/A'}/100`, 14, yPosition);
+      yPosition += 5;
+      doc.text(`Started: ${formatDate(assessment.startDate)}`, 14, yPosition);
+      yPosition += 5;
+      doc.text(`Completed: ${assessment.completionDate ? formatDate(assessment.completionDate) : 'N/A'}`, 14, yPosition);
+      yPosition += 5;
+      doc.text(`Progress: ${assessment.progressPercentage}%`, 14, yPosition);
+      yPosition += 5;
+      doc.text(`Questions: ${assessment.answeredQuestions}/${assessment.totalQuestions}`, 14, yPosition);
+      yPosition += 10;
+
+      // Questions by Category
+      const categories = Object.entries(assessment.questionsByCategory || {});
+      
+      for (const [category, questions] of categories) {
+        if (yPosition > pageHeight - 40) {
+          doc.addPage();
+          yPosition = 20;
+        }
+
+        doc.setFontSize(12);
+        doc.setFont("helvetica", "bold");
+        doc.setTextColor(91, 33, 182);
+        doc.text(`${category} (${questions.filter(q => q.answered).length}/${questions.length})`, 14, yPosition);
+        yPosition += 7;
+        doc.setTextColor(0, 0, 0);
+
+        // List questions
+        questions.forEach((q, idx) => {
+          if (yPosition > pageHeight - 30) {
+            doc.addPage();
+            yPosition = 20;
+          }
+
+          doc.setFont("helvetica", "bold");
+          doc.setFontSize(10);
+          doc.text(`${idx + 1}. ${q.questionText}`, 14, yPosition);
+          yPosition += 5;
+
+          doc.setFont("helvetica", "normal");
+          doc.setFontSize(9);
+          
+          if (q.answered) {
+            doc.setTextColor(0, 128, 0); // Green
+            const answerText = q.answer || 'No response';
+            const splitAnswer = doc.splitTextToSize(`Answer: ${answerText}`, pageWidth - 28);
+            doc.text(splitAnswer, 18, yPosition);
+            yPosition += splitAnswer.length * 5;
+          } else {
+            doc.setTextColor(255, 0, 0); // Red
+            doc.text('Answer: Not answered', 18, yPosition);
+            yPosition += 5;
+          }
+          
+          doc.setTextColor(0, 0, 0);
+          yPosition += 3;
+        });
+
+        yPosition += 5;
+      }
+
+      // Footer
+      const pageCount = doc.internal.getNumberOfPages();
+      for (let i = 1; i <= pageCount; i++) {
+        doc.setPage(i);
+        doc.setFontSize(8);
+        doc.setTextColor(128, 128, 128);
+        doc.text(`Page ${i} of ${pageCount}`, pageWidth / 2, pageHeight - 10, { align: "center" });
+        doc.text(`Generated on ${new Date().toLocaleDateString()}`, pageWidth - 14, pageHeight - 10, { align: "right" });
+      }
+
+      // Save PDF
+      const fileName = `Assessment_${assessment.assessmentId}_${new Date().toISOString().split('T')[0]}.pdf`;
+      doc.save(fileName);
+    } catch (error) {
+      console.error("Error generating PDF:", error);
+      alert("Failed to generate PDF. Please try again.");
+    }
   };
 
   const handleViewDetail = (assessmentId) => {
@@ -313,9 +436,17 @@ export default function ResultsPage() {
               <div className="flex gap-3 pt-4 border-t border-gray-200">
                 <button
                   onClick={() =>
-                    navigate(`/questionnaire/${result.questionnaireId}`)
+                    navigate(`/assessment-results/${result.assessmentId}`)
                   }
                   className="bg-raimes-purple hover:opacity-90 text-white font-semibold px-4 py-2 rounded-lg transition-colors"
+                >
+                  View Results
+                </button>
+                <button
+                  onClick={() =>
+                    navigate(`/questionnaire/${result.questionnaireId}`)
+                  }
+                  className="bg-gray-600 hover:bg-gray-700 text-white font-semibold px-4 py-2 rounded-lg transition-colors"
                 >
                   View Assessment
                 </button>
