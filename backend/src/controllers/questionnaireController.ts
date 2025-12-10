@@ -291,3 +291,81 @@ export const getQuestionnaireStats = async (req: Request, res: Response): Promis
     });
   }
 };
+
+// Get questionnaires grouped by category from questions
+// /api/questionnaires/by-category
+export const getQuestionnairesByCategory = async (req: Request, res: Response): Promise<void> => {
+  try {
+    console.log('🔍 getQuestionnairesByCategory called');
+    
+    // Get all distinct categories with their question counts
+    // Each category becomes a "virtual questionnaire"
+    const categoryQuery = `
+      SELECT 
+        category,
+        COUNT(*) as question_count
+      FROM question 
+      WHERE category IS NOT NULL 
+      GROUP BY category
+      ORDER BY category
+    `;
+
+    const categoryResult = await pool.query(categoryQuery);
+
+    console.log('📊 Category query results:', categoryResult.rows);
+
+    // Get the base questionnaire info (we'll use the first one as template)
+    const baseQuestionnaireQuery = `
+      SELECT title, version, description, standard
+      FROM questionnaire
+      LIMIT 1
+    `;
+    
+    const baseQuestionnaire = await pool.query(baseQuestionnaireQuery);
+    const baseInfo = baseQuestionnaire.rows[0] || {
+      version: '1.0',
+      standard: 'RMI 2022 & IRMA'
+    };
+
+    // Group "virtual questionnaires" by category
+    const categorizedQuestionnaires: Record<string, any[]> = {};
+
+    categoryResult.rows.forEach((row) => {
+      const category = row.category;
+      
+      categorizedQuestionnaires[category] = [{
+        questionnaireid: category, // Use category as ID
+        category: category,
+        title: `${category} Assessment`,
+        description: `Assessment questionnaire for ${category} practices in responsible mining`,
+        standard: baseInfo.standard,
+        version: baseInfo.version,
+        question_count: parseInt(row.question_count)
+      }];
+    });
+
+    const result = {
+      success: true,
+      data: categorizedQuestionnaires,
+      categories: Object.keys(categorizedQuestionnaires).sort(),
+      total: Object.keys(categorizedQuestionnaires).length,
+      message: 'Questionnaires by category retrieved successfully'
+    };
+
+    console.log('✅ Questionnaires by category result:', {
+      categoriesCount: result.categories.length,
+      categories: result.categories,
+      totalQuestionnaires: result.total,
+      categoryData: categoryResult.rows.map(r => ({ category: r.category, count: r.question_count }))
+    });
+
+    res.status(200).json(result);
+  } catch (error) {
+    console.error('❌ Error getting questionnaires by category:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error retrieving questionnaires by category',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+};

@@ -5,7 +5,7 @@ import { assessmentService } from "../../services/assessmentService";
 
 export default function MyAssessmentsPage() {
   const navigate = useNavigate();
-  const [assessments, setAssessments] = useState([]);
+  const [assessmentsByCategory, setAssessmentsByCategory] = useState({});
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("all"); // all, in-progress, completed, pending
 
@@ -14,86 +14,67 @@ export default function MyAssessmentsPage() {
     const loadAssessments = async () => {
       try {
         setLoading(true);
-        const response = await assessmentService.getMyAssessments();
-        if (response?.success && Array.isArray(response.data)) {
-          // Map API data to UI shape
-          const mapped = response.data.map((a) => ({
-            id: a.id,
-            questionnaireId: a.questionnaireId,
-            title: a.questionnaireTitle || `Questionnaire ${a.questionnaireId}`,
-            status:
-              a.status === "in_progress"
-                ? "in-progress"
-                : a.status === "completed"
-                ? "completed"
-                : a.status || "in-progress",
-            progress: a.progressPercentage ?? 0,
-            startedAt: a.startDate ? a.startDate.substring(0, 10) : undefined,
-            completedAt: a.completionDate
-              ? a.completionDate.substring(0, 10)
-              : undefined,
-            totalQuestions: a.totalQuestions ?? 0,
-            answeredQuestions: a.answeredQuestions ?? 0,
-            score: a.finalScore ?? undefined,
-            lastUpdated: a.completionDate
-              ? a.completionDate.substring(0, 10)
-              : a.startDate
-              ? a.startDate.substring(0, 10)
-              : undefined,
-          }));
-          if (isMounted) setAssessments(mapped);
-        } else if (isMounted) {
-          setAssessments([]);
+        const response = await assessmentService.getMyAssessmentsByCategory();
+        
+        if (isMounted) {
+          setAssessmentsByCategory(response || {});
         }
-      } catch (e) {
-        console.error("Failed to load assessments", e);
-        if (isMounted) setAssessments([]);
+      } catch (error) {
+        console.error("Error loading assessments:", error);
       } finally {
-        if (isMounted) setLoading(false);
+        if (isMounted) {
+          setLoading(false);
+        }
       }
     };
+
     loadAssessments();
+
     return () => {
       isMounted = false;
     };
   }, []);
 
-  const filteredAssessments = assessments.filter((assessment) => {
-    if (filter === "all") return true;
-    if (filter === "in-progress") return assessment.status === "in-progress";
-    if (filter === "completed") return assessment.status === "completed";
-    if (filter === "pending") return assessment.status === "pending-review";
-    return true;
-  });
+  // Get all assessments flattened
+  const allAssessments = Object.values(assessmentsByCategory).flat();
 
-  const getStatusBadge = (status) => {
-    const badges = {
-      "in-progress": "bg-blue-100 text-blue-800 border-blue-300",
-      completed: "bg-green-100 text-green-800 border-green-300",
-      "pending-review": "bg-yellow-100 text-yellow-800 border-yellow-300",
-      "not-started": "bg-gray-100 text-gray-800 border-gray-300",
-    };
-    const labels = {
-      "in-progress": "In Progress",
-      completed: "Completed",
-      "pending-review": "Pending Review",
-      "not-started": "Not Started",
-    };
-    return (
-      <span
-        className={`px-3 py-1 rounded-full text-xs font-semibold border ${badges[status]}`}
-      >
-        {labels[status]}
-      </span>
-    );
-  };
+  // Filter assessments by status
+  const filteredCategories = Object.keys(assessmentsByCategory).reduce((acc, category) => {
+    const filtered = assessmentsByCategory[category].filter((a) => {
+      if (filter === "all") return true;
+      if (filter === "pending") return a.status === "pending-review";
+      return a.status === filter;
+    });
+    
+    if (filtered.length > 0) {
+      acc[category] = filtered;
+    }
+    return acc;
+  }, {});
 
   const handleContinueAssessment = (questionnaireId) => {
-    navigate(`/questionnaire/${questionnaireId}`);
+    navigate(`/assessment/${questionnaireId}`);
   };
 
   const handleViewResults = (assessmentId) => {
-    navigate(`/assessment-result/${assessmentId}`);
+    navigate(`/assessment/results/${assessmentId}`);
+  };
+
+  const getStatusBadge = (status) => {
+    const statusConfig = {
+      "in-progress": { label: "In Progress", color: "bg-blue-100 text-blue-800" },
+      "completed": { label: "Completed", color: "bg-green-100 text-green-800" },
+      "pending-review": { label: "Pending Review", color: "bg-yellow-100 text-yellow-800" },
+      "not-started": { label: "Not Started", color: "bg-gray-100 text-gray-800" },
+    };
+
+    const config = statusConfig[status] || statusConfig["not-started"];
+    
+    return (
+      <span className={`px-3 py-1 rounded-full text-xs font-medium ${config.color}`}>
+        {config.label}
+      </span>
+    );
   };
 
   if (loading) {
@@ -101,26 +82,14 @@ export default function MyAssessmentsPage() {
       <div className="min-h-screen bg-gray-50">
         <Navbar />
         <div className="max-w-7xl mx-auto px-8 py-12">
-          <div className="flex items-center justify-center h-64">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-            <span className="ml-4 text-gray-600">Loading assessments...</span>
+          <div className="text-center">
+            <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-raimes-purple"></div>
+            <p className="mt-2 text-gray-600">Loading assessments...</p>
           </div>
         </div>
       </div>
     );
   }
-
-  // Group assessments by status for the new layout
-  const statusGroups = [
-    { key: "in-progress", title: "In Progress", dot: "bg-blue-500" },
-    { key: "pending-review", title: "Pending Review", dot: "bg-yellow-500" },
-    { key: "completed", title: "Completed", dot: "bg-green-500" },
-    { key: "not-started", title: "Not Started", dot: "bg-gray-400" },
-  ];
-  const grouped = filteredAssessments.reduce((acc, a) => {
-    acc[a.status] = acc[a.status] ? [...acc[a.status], a] : [a];
-    return acc;
-  }, {});
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -141,25 +110,25 @@ export default function MyAssessmentsPage() {
           <div className="bg-white rounded-lg shadow-sm p-6">
             <div className="text-sm text-gray-500 mb-1">Total Assessments</div>
             <div className="text-3xl font-bold text-raimes-purple">
-              {assessments.length}
+              {allAssessments.length}
             </div>
           </div>
           <div className="bg-white rounded-lg shadow-sm p-6">
             <div className="text-sm text-gray-500 mb-1">In Progress</div>
             <div className="text-3xl font-bold text-blue-600">
-              {assessments.filter((a) => a.status === "in-progress").length}
+              {allAssessments.filter((a) => a.status === "in-progress").length}
             </div>
           </div>
           <div className="bg-white rounded-lg shadow-sm p-6">
             <div className="text-sm text-gray-500 mb-1">Completed</div>
             <div className="text-3xl font-bold text-green-600">
-              {assessments.filter((a) => a.status === "completed").length}
+              {allAssessments.filter((a) => a.status === "completed").length}
             </div>
           </div>
           <div className="bg-white rounded-lg shadow-sm p-6">
             <div className="text-sm text-gray-500 mb-1">Pending Review</div>
             <div className="text-3xl font-bold text-yellow-600">
-              {assessments.filter((a) => a.status === "pending-review").length}
+              {allAssessments.filter((a) => a.status === "pending-review").length}
             </div>
           </div>
         </div>
@@ -191,18 +160,15 @@ export default function MyAssessmentsPage() {
           </div>
         </div>
 
-        {/* Grouped Sections */}
+        {/* Grouped Sections by Category */}
         <div className="space-y-12">
-          {statusGroups.map((group) => {
-            const list = grouped[group.key] || [];
-            if (!list.length) return null;
+          {Object.keys(filteredCategories).map((category) => {
+            const list = filteredCategories[category];
             return (
-              <div key={group.key}>
+              <div key={category}>
                 <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center">
-                  <span
-                    className={`w-3 h-3 rounded-full mr-2 ${group.dot}`}
-                  ></span>
-                  {group.title}{" "}
+                  <span className="w-3 h-3 rounded-full mr-2 bg-raimes-purple"></span>
+                  {category}{" "}
                   <span className="ml-2 text-sm text-gray-500">
                     ({list.length})
                   </span>
@@ -313,7 +279,7 @@ export default function MyAssessmentsPage() {
           })}
         </div>
 
-        {filteredAssessments.length === 0 && (
+        {Object.keys(filteredCategories).length === 0 && (
           <div className="bg-white rounded-lg shadow-sm p-12 text-center mt-8">
             <svg
               className="mx-auto h-12 w-12 text-gray-400 mb-4"

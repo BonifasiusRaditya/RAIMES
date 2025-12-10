@@ -8,7 +8,8 @@ const CompanyDashboard = () => {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [assessments, setAssessments] = useState([]);
-  const [questionnaires, setQuestionnaires] = useState([]);
+  const [categorizedQuestionnaires, setCategorizedQuestionnaires] = useState({});
+  const [categories, setCategories] = useState([]);
   const [stats, setStats] = useState({
     total: 0,
     inProgress: 0,
@@ -26,79 +27,104 @@ const CompanyDashboard = () => {
       setLoading(true);
       setError("");
 
-      // Fetch available questionnaires (still used for starting new assessments)
-      const questionnairesResponse =
-        await questionnaireService.getAllQuestionnaires();
-
-      if (questionnairesResponse.success) {
-        setQuestionnaires(questionnairesResponse.data || []);
+      // Fetch questionnaires grouped by category
+      try {
+        const categoryResponse = await questionnaireService.getQuestionnairesByCategory();
+        console.log('📊 Category response:', categoryResponse);
+        
+        if (categoryResponse && categoryResponse.success) {
+          setCategorizedQuestionnaires(categoryResponse.data || {});
+          setCategories(categoryResponse.categories || []);
+          console.log('✅ Categories loaded:', categoryResponse.categories);
+        } else {
+          console.warn('⚠️ No categories found or failed response');
+          setCategorizedQuestionnaires({});
+          setCategories([]);
+        }
+      } catch (categoryError) {
+        console.error('❌ Error fetching categories:', categoryError);
+        setCategorizedQuestionnaires({});
+        setCategories([]);
       }
 
       // Fetch user's assessments (same source as MyAssessmentsPage)
-      const myAssessmentsResponse = await assessmentService.getMyAssessments();
-      if (
-        myAssessmentsResponse?.success &&
-        Array.isArray(myAssessmentsResponse.data)
-      ) {
-        // Map API data to the table's expected shape
-        const mappedAssessments = myAssessmentsResponse.data.map((a) => ({
-          assessmentId: a.id,
-          questionnaireId: a.questionnaireId,
-          questionnaireTitle:
-            a.questionnaireTitle || `Questionnaire ${a.questionnaireId}`,
-          questionnaireDescription: a.questionnaireDescription || "",
-          progressPercentage: a.progressPercentage ?? 0,
-          answeredQuestions: a.answeredQuestions ?? 0,
-          totalQuestions: a.totalQuestions ?? 0,
-          status:
-            a.status === "in_progress"
-              ? "in-progress"
-              : a.status || "in-progress",
-          finalScore: a.finalScore ?? null,
-          startDate: a.startDate || null,
-        }));
+      try {
+        const myAssessmentsResponse = await assessmentService.getMyAssessments();
+        console.log('📋 My assessments response:', myAssessmentsResponse);
+        
+        if (
+          myAssessmentsResponse?.success &&
+          Array.isArray(myAssessmentsResponse.data)
+        ) {
+          // Map API data to the table's expected shape
+          const mappedAssessments = myAssessmentsResponse.data.map((a) => ({
+            assessmentId: a.id,
+            questionnaireId: a.questionnaireId,
+            questionnaireTitle:
+              a.questionnaireTitle || `Questionnaire ${a.questionnaireId}`,
+            questionnaireDescription: a.questionnaireDescription || "",
+            progressPercentage: a.progressPercentage ?? 0,
+            answeredQuestions: a.answeredQuestions ?? 0,
+            totalQuestions: a.totalQuestions ?? 0,
+            status:
+              a.status === "in_progress"
+                ? "in-progress"
+                : a.status || "in-progress",
+            finalScore: a.finalScore ?? null,
+            startDate: a.startDate || null,
+          }));
 
-        setAssessments(mappedAssessments);
+          setAssessments(mappedAssessments);
 
-        // Derive stats from mapped assessments
-        setStats({
-          total: mappedAssessments.length,
-          inProgress: mappedAssessments.filter(
-            (a) => a.status === "in-progress"
-          ).length,
-          completed: mappedAssessments.filter((a) => a.status === "completed")
-            .length,
-          pending: mappedAssessments.filter(
-            (a) => a.status === "pending-review" || a.status === "pending"
-          ).length,
-        });
-      } else {
+          // Derive stats from mapped assessments
+          setStats({
+            total: mappedAssessments.length,
+            inProgress: mappedAssessments.filter(
+              (a) => a.status === "in-progress"
+            ).length,
+            completed: mappedAssessments.filter((a) => a.status === "completed")
+              .length,
+            pending: mappedAssessments.filter(
+              (a) => a.status === "pending-review" || a.status === "pending"
+            ).length,
+          });
+          console.log('✅ Assessments loaded:', mappedAssessments.length);
+        } else {
+          console.warn('⚠️ No assessments found');
+          setAssessments([]);
+          setStats({ total: 0, inProgress: 0, completed: 0, pending: 0 });
+        }
+      } catch (assessmentError) {
+        console.error('❌ Error fetching assessments:', assessmentError);
         setAssessments([]);
         setStats({ total: 0, inProgress: 0, completed: 0, pending: 0 });
       }
     } catch (err) {
-      console.error("Error fetching dashboard data:", err);
-      setError("Failed to load dashboard data");
+      console.error("❌ Error fetching dashboard data:", err);
+      setError("Failed to load dashboard data. Please refresh the page.");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleStartAssessment = async (questionnaireId) => {
+  const handleStartAssessment = async (questionnaire) => {
     try {
-      // Check if assessment already exists
+      console.log('Starting assessment for:', questionnaire);
+      
+      // questionnaireid is now a category string, not a number
+      const questionnaireId = questionnaire.questionnaireid;
+
+      // Check if assessment already exists for this category
       const existingAssessment = assessments.find(
-        (a) => a.questionnaireId === parseInt(questionnaireId)
+        (a) => String(a.questionnaireId) === String(questionnaireId)
       );
 
       if (existingAssessment) {
         // Continue existing assessment
         window.location.href = `/questionnaire/${questionnaireId}`;
       } else {
-        // Start new assessment
-        const response = await assessmentService.startAssessment(
-          questionnaireId
-        );
+        // Start new assessment with category as ID
+        const response = await assessmentService.startAssessment(questionnaireId);
         if (response.success) {
           window.location.href = `/questionnaire/${questionnaireId}`;
         } else {
@@ -107,7 +133,7 @@ const CompanyDashboard = () => {
       }
     } catch (err) {
       console.error("Error starting assessment:", err);
-      alert("Failed to start assessment");
+      alert("Failed to start assessment: " + (err.message || "Unknown error"));
     }
   };
 
@@ -273,19 +299,19 @@ const CompanyDashboard = () => {
           </div>
         </div>
 
-        {/* Available Questionnaires */}
+        {/* Available Questionnaires by Category */}
         <div className="bg-white rounded-lg shadow-md border-t-4 border-raimes-purple mb-8">
           <div className="px-6 py-4 border-b border-gray-200 bg-purple-50">
             <h2 className="text-xl font-bold text-raimes-purple">
-              Available Assessments
+              Available Assessments by Category
             </h2>
             <p className="text-sm text-gray-600 mt-1">
-              Start a new maturity assessment
+              Start a new maturity assessment organized by categories
             </p>
           </div>
 
           <div className="p-6">
-            {questionnaires.length === 0 ? (
+            {categories.length === 0 ? (
               <div className="text-center py-12">
                 <svg
                   className="mx-auto h-12 w-12 text-gray-400"
@@ -308,99 +334,98 @@ const CompanyDashboard = () => {
                 </p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {questionnaires.map((questionnaire) => {
-                  const existingAssessment = assessments.find(
-                    (a) => a.questionnaireId === questionnaire.id
-                  );
+              <div className="space-y-8">
+                {categories.map((category) => (
+                  <div key={category} className="border-l-4 border-raimes-purple pl-4">
+                    <h3 className="text-lg font-bold text-raimes-purple mb-4 capitalize">
+                      {category}
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                      {categorizedQuestionnaires[category]?.map((questionnaire) => {
+                        const existingAssessment = assessments.find(
+                          (a) => a.questionnaireId === questionnaire.questionnaireid
+                        );
 
-                  return (
-                    <div
-                      key={questionnaire.id}
-                      className="border-2 border-purple-200 rounded-lg p-6 hover:shadow-xl hover:border-raimes-purple transition-all"
-                    >
-                      <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                        {questionnaire.title}
-                      </h3>
-                      <p className="text-sm text-gray-600 mb-4 line-clamp-2">
-                        {questionnaire.description ||
-                          "No description available"}
-                      </p>
-
-                      <div className="space-y-2 mb-4">
-                        <div className="flex items-center text-sm text-gray-500">
-                          <svg
-                            className="h-4 w-4 mr-2"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
+                        return (
+                          <div
+                            key={questionnaire.questionnaireid}
+                            className="border-2 border-purple-200 rounded-lg p-6 hover:shadow-xl hover:border-raimes-purple transition-all"
                           >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-                            />
-                          </svg>
-                          Created: {formatDate(questionnaire.created_at)}
-                        </div>
-                        {questionnaire.updated_at && (
-                          <div className="flex items-center text-sm text-gray-500">
-                            <svg
-                              className="h-4 w-4 mr-2"
-                              fill="none"
-                              stroke="currentColor"
-                              viewBox="0 0 24 24"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                              />
-                            </svg>
-                            Updated: {formatDate(questionnaire.updated_at)}
-                          </div>
-                        )}
-                        {existingAssessment && (
-                          <div className="flex items-center text-sm text-blue-600">
-                            <svg
-                              className="h-4 w-4 mr-2"
-                              fill="none"
-                              stroke="currentColor"
-                              viewBox="0 0 24 24"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                              />
-                            </svg>
-                            Progress: {existingAssessment.progressPercentage}%
-                          </div>
-                        )}
-                      </div>
+                            <div className="flex items-start justify-between mb-2">
+                              <h4 className="text-lg font-semibold text-gray-900 flex-1">
+                                {questionnaire.title}
+                              </h4>
+                              <span className="ml-2 px-2 py-1 text-xs font-medium bg-purple-100 text-raimes-purple rounded-full">
+                                {questionnaire.question_count} questions
+                              </span>
+                            </div>
+                            
+                            <p className="text-sm text-gray-600 mb-4 line-clamp-2">
+                              {questionnaire.description || "No description available"}
+                            </p>
 
-                      <button
-                        onClick={() => handleStartAssessment(questionnaire.id)}
-                        className={`w-full px-4 py-2 rounded-lg transition-colors font-medium ${
-                          existingAssessment
-                            ? "bg-raimes-purple text-white hover:opacity-90"
-                            : "bg-raimes-yellow text-gray-900 hover:opacity-90"
-                        }`}
-                      >
-                        {existingAssessment
-                          ? "Continue Assessment"
-                          : "Start Assessment"}
-                      </button>
+                            <div className="space-y-2 mb-4">
+                              {questionnaire.standard && (
+                                <div className="flex items-center text-sm text-gray-500">
+                                  <svg
+                                    className="h-4 w-4 mr-2"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                  >
+                                    <path
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      strokeWidth={2}
+                                      d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
+                                    />
+                                  </svg>
+                                  Standard: {questionnaire.standard}
+                                </div>
+                              )}
+                              {existingAssessment && (
+                                <div className="flex items-center text-sm text-blue-600">
+                                  <svg
+                                    className="h-4 w-4 mr-2"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                  >
+                                    <path
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      strokeWidth={2}
+                                      d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                                    />
+                                  </svg>
+                                  Progress: {existingAssessment.progressPercentage}%
+                                </div>
+                              )}
+                            </div>
+
+                            <button
+                              onClick={() => handleStartAssessment(questionnaire)}
+                              className={`w-full px-4 py-2 rounded-lg transition-colors font-medium ${
+                                existingAssessment
+                                  ? "bg-raimes-purple text-white hover:opacity-90"
+                                  : "bg-raimes-yellow text-gray-900 hover:opacity-90"
+                              }`}
+                            >
+                              {existingAssessment
+                                ? "Continue Assessment"
+                                : "Start Assessment"}
+                            </button>
+                          </div>
+                        );
+                      })}
                     </div>
-                  );
-                })}
+                  </div>
+                ))}
               </div>
             )}
           </div>
         </div>
+
 
         {/* My Assessments (In Progress & Completed) */}
         <div className="bg-white rounded-lg shadow-md border-t-4 border-raimes-yellow">

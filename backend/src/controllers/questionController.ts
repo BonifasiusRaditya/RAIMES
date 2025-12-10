@@ -90,8 +90,8 @@ export const getAllQuestionsPublic = async (req: Request, res: Response): Promis
     }
 };
 
-// /
-export const getAllQuestions = async (req: Request, res: Response) => {
+// Get all questions with filters
+export const getAllQuestions = async (req: Request, res: Response): Promise<void> => {
   try {
     const { category, type, search } = req.query;
     
@@ -145,7 +145,8 @@ export const getAllQuestions = async (req: Request, res: Response) => {
   }
 };
 
-export const getQuestionById = async (req: Request, res: Response) => {
+// Get question by ID
+export const getQuestionById = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
     
@@ -158,10 +159,11 @@ export const getQuestionById = async (req: Request, res: Response) => {
     );
 
     if (result.rows.length === 0) {
-      return res.status(404).json({
+      res.status(404).json({
         success: false,
         message: 'Question not found'
       });
+      return;
     }
 
     const question = result.rows[0];
@@ -181,7 +183,8 @@ export const getQuestionById = async (req: Request, res: Response) => {
   }
 };
 
-export const createQuestion = async (req: Request, res: Response) => {
+// Create new question
+export const createQuestion = async (req: Request, res: Response): Promise<void> => {
   try {
     // Accept different casing/keys from frontend: questionnaireID | questionnaireId | questionnaireid
     const rawBody: any = req.body || {};
@@ -193,65 +196,73 @@ export const createQuestion = async (req: Request, res: Response) => {
 
     // Require questionnaireID to avoid DB NOT NULL error
     if (questionnaireID == null || questionnaireID <= 0) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         message: 'questionnaireID is required and must be a positive integer'
       });
+      return;
     }
 
     // Verify questionnaire exists
     const qCheck = await pool.query('SELECT questionnaireid FROM questionnaire WHERE questionnaireid = $1', [questionnaireID]);
     if (qCheck.rows.length === 0) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         message: 'Invalid questionnaireID'
       });
+      return;
     }
 
     // Validation (existing)
     if (!text || !text.trim()) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         message: 'Question text is required'
       });
+      return;
     }
     
     if (!type || !['essay', 'multiple_choice'].includes(type)) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         message: 'Valid question type is required (essay or multiple_choice)'
       });
+      return;
     }
 
     if (!category || !category.trim()) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         message: 'Category is required'
       });
+      return;
     }
 
     if (weight && (weight < 1 || weight > 10)) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         message: 'Weight must be between 1 and 10'
       });
+      return;
     }
 
     // Validate multiple choice options
     if (type === 'multiple_choice') {
       if (!options || !Array.isArray(options) || options.length < 2) {
-        return res.status(400).json({
+        res.status(400).json({
           success: false,
           message: 'Multiple choice questions must have at least 2 options'
         });
+        return;
       }
 
       const validOptions = options.filter(opt => opt && opt.trim() !== '');
       if (validOptions.length < 2) {
-        return res.status(400).json({
+        res.status(400).json({
           success: false,
           message: 'Multiple choice questions must have at least 2 non-empty options'
         });
+        return;
       }
     }
 
@@ -283,7 +294,8 @@ export const createQuestion = async (req: Request, res: Response) => {
   }
 };
 
-export const updateQuestion = async (req: Request, res: Response) => {
+// Update question
+export const updateQuestion = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
     const rawBody: any = req.body || {};
@@ -296,10 +308,11 @@ export const updateQuestion = async (req: Request, res: Response) => {
     // Get existing question including its questionnaireid
     const existingQuestion = await pool.query('SELECT questionID, questionnaireid FROM Question WHERE questionID = $1', [id]);
     if (existingQuestion.rows.length === 0) {
-      return res.status(404).json({
+      res.status(404).json({
         success: false,
         message: 'Question not found'
       });
+      return;
     }
     const currentQuestionnaireId = existingQuestion.rows[0].questionnaireid;
 
@@ -307,57 +320,64 @@ export const updateQuestion = async (req: Request, res: Response) => {
     if (questionnaireID && questionnaireID !== currentQuestionnaireId) {
       const qCheck = await pool.query('SELECT questionnaireid FROM questionnaire WHERE questionnaireid = $1', [questionnaireID]);
       if (qCheck.rows.length === 0) {
-        return res.status(400).json({
+        res.status(400).json({
           success: false,
           message: 'Invalid questionnaireID'
         });
+        return;
       }
     }
 
     // Validation (same as create)
     if (!text || !text.trim()) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         message: 'Question text is required'
       });
+      return;
     }
 
     if (!type || !['essay', 'multiple_choice'].includes(type)) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         message: 'Valid question type is required (essay or multiple_choice)'
       });
+      return;
     }
 
     if (!category || !category.trim()) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         message: 'Category is required'
       });
+      return;
     }
 
     if (weight && (weight < 1 || weight > 10)) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         message: 'Weight must be between 1 and 10'
       });
+      return;
     }
 
     // Validate multiple choice options
     if (type === 'multiple_choice') {
       if (!options || !Array.isArray(options) || options.length < 2) {
-        return res.status(400).json({
+        res.status(400).json({
           success: false,
           message: 'Multiple choice questions must have at least 2 options'
         });
+        return;
       }
 
       const validOptions = options.filter(opt => opt && opt.trim() !== '');
       if (validOptions.length < 2) {
-        return res.status(400).json({
+        res.status(400).json({
           success: false,
           message: 'Multiple choice questions must have at least 2 non-empty options'
         });
+        return;
       }
     }
 
@@ -395,17 +415,19 @@ export const updateQuestion = async (req: Request, res: Response) => {
   }
 };
 
-export const deleteQuestion = async (req: Request, res: Response) => {
+// Delete question
+export const deleteQuestion = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
 
     const result = await pool.query('DELETE FROM Question WHERE questionID = $1 RETURNING questionID as id', [id]);
 
     if (result.rows.length === 0) {
-      return res.status(404).json({
+      res.status(404).json({
         success: false,
         message: 'Question not found'
       });
+      return;
     }
 
     res.status(200).json({
@@ -422,7 +444,8 @@ export const deleteQuestion = async (req: Request, res: Response) => {
   }
 };
 
-export const getQuestionCategories = async (req: Request, res: Response) => {
+// Get distinct question categories
+export const getQuestionCategories = async (req: Request, res: Response): Promise<void> => {
   try {
     const result = await pool.query(
       `SELECT DISTINCT category 
@@ -446,7 +469,8 @@ export const getQuestionCategories = async (req: Request, res: Response) => {
   }
 };
 
-export const getQuestionStats = async (req: Request, res: Response) => {
+// Get question statistics
+export const getQuestionStats = async (req: Request, res: Response): Promise<void> => {
   try {
     const result = await pool.query(`
       SELECT 
@@ -494,29 +518,85 @@ export const getQuestionsByQuestionnaireId = async (req: Request, res: Response)
   try {
     const { questionnaireId } = req.params;
 
-    const query = `
-      SELECT 
-        q.questionID,
-        q.text,
-        q.type,
-        q.weight,
-        q.category,
-        q.require_evidence,
-        q.options,
-        q.created_at,
-        q.updated_at
-      FROM Question q
-      WHERE q.questionnaireid = $1
-      ORDER BY q.questionID ASC
-    `;
+    // Check if questionnaireId is a category name (string) or actual ID (number)
+    const isCategory = isNaN(Number(questionnaireId));
+    
+    let query: string;
+    let queryParams: any[];
 
-    const result = await pool.query(query, [questionnaireId]);
+    if (isCategory) {
+      // Filter by category
+      query = `
+        SELECT 
+          q.questionID,
+          q.questionnaireid,
+          q.text,
+          q.type,
+          q.weight,
+          q.category,
+          q.require_evidence,
+          q.options,
+          q.created_at,
+          q.updated_at
+        FROM Question q
+        WHERE q.category = $1
+        ORDER BY q.questionID ASC
+      `;
+      queryParams = [questionnaireId];
+    } else {
+      // Filter by questionnaireid (original behavior)
+      query = `
+        SELECT 
+          q.questionID,
+          q.questionnaireid,
+          q.text,
+          q.type,
+          q.weight,
+          q.category,
+          q.require_evidence,
+          q.options,
+          q.created_at,
+          q.updated_at
+        FROM Question q
+        WHERE q.questionnaireid = $1
+        ORDER BY q.questionID ASC
+      `;
+      queryParams = [questionnaireId];
+    }
+
+    const result = await pool.query(query, queryParams);
+
+    // Transform data: handle options (JSONB is auto-parsed by pg driver)
+    const transformedData = result.rows.map(row => {
+      return {
+        questionID: row.questionid,
+        questionnaireID: row.questionnaireid,
+        text: row.text,
+        type: row.type,
+        weight: row.weight,
+        category: row.category,
+        require_evidence: row.require_evidence,
+        options: row.options || null,
+        created_at: row.created_at,
+        updated_at: row.updated_at
+      };
+    });
+
+    // Debug: log first question with options
+    if (transformedData.length > 0 && transformedData[0]) {
+      console.log('Sample question with options:', {
+        id: transformedData[0].questionID,
+        type: transformedData[0].type,
+        options: transformedData[0].options,
+        isCategory: isCategory
+      });
+    }
 
     res.status(200).json({
       success: true,
-      data: result.rows,
-      total: result.rows.length,
-      message: `Found ${result.rows.length} questions for questionnaire ${questionnaireId}`
+      data: transformedData,
+      total: transformedData.length,
+      message: `Found ${transformedData.length} questions for ${isCategory ? 'category' : 'questionnaire'} ${questionnaireId}`
     });
   } catch (error) {
     console.error('Error fetching questions by questionnaire:', error);

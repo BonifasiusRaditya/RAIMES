@@ -53,6 +53,20 @@ export const startAssessment = async (req: AuthRequest, res: Response): Promise<
       return;
     }
 
+    // Check if questionnaireId is a category string or actual ID
+    const isCategory = isNaN(Number(questionnaireId));
+    
+    // Always use questionnaire ID 1 (the main questionnaire)
+    // Categories are just views/filters on the questions
+    const actualQuestionnaireId = 1;
+    
+    console.log('🔍 QuestionnaireId type:', { 
+      questionnaireId, 
+      isCategory, 
+      actualQuestionnaireId,
+      category: isCategory ? questionnaireId : null
+    });
+
     // Get user's company information
     const userCompanyQuery = `
       SELECT c.companyid, c.companyname
@@ -77,6 +91,7 @@ export const startAssessment = async (req: AuthRequest, res: Response): Promise<
     console.log('✅ Found company for user:', { userId, companyId, companyName });
 
     // Check if assessment already exists for this company and questionnaire
+    // NOTE: We always use actualQuestionnaireId (1) regardless of category
     const existingQuery = `
       SELECT a.*, u.username, c.companyname 
       FROM Assessment a
@@ -85,7 +100,7 @@ export const startAssessment = async (req: AuthRequest, res: Response): Promise<
       WHERE a.companyid = $1 AND a.questionnaireid = $2
     `;
     
-    const existingResult = await pool.query(existingQuery, [companyId, questionnaireId]);
+    const existingResult = await pool.query(existingQuery, [companyId, actualQuestionnaireId]);
 
     if (existingResult.rows.length > 0) {
       const assessment = existingResult.rows[0];
@@ -98,14 +113,24 @@ export const startAssessment = async (req: AuthRequest, res: Response): Promise<
       `;
       const answeredResult = await pool.query(answeredQuery, [assessment.assessmentid]);
       const answeredCount = parseInt(answeredResult.rows[0].answered_count);
-      
-      // Get total questions count
-      const totalQuery = `
-        SELECT COUNT(*) as total_count 
-        FROM Question 
-        WHERE questionnaireid = $1
-      `;
-      const totalResult = await pool.query(totalQuery, [questionnaireId]);
+      // Get total questions count for this category (or all if not category)
+      let totalQuery, totalParams;
+      if (isCategory) {
+        totalQuery = `
+          SELECT COUNT(*) as total_count 
+          FROM Question 
+          WHERE category = $1
+        `;
+        totalParams = [questionnaireId];
+      } else {
+        totalQuery = `
+          SELECT COUNT(*) as total_count 
+          FROM Question 
+          WHERE questionnaireid = $1
+        `;
+        totalParams = [actualQuestionnaireId];
+      }
+      const totalResult = await pool.query(totalQuery, totalParams);
       const totalQuestions = parseInt(totalResult.rows[0].total_count);
       
       const progressPercentage = totalQuestions > 0 
@@ -117,7 +142,7 @@ export const startAssessment = async (req: AuthRequest, res: Response): Promise<
         message: 'Assessment already exists',
         data: {
           id: assessment.assessmentid,
-          questionnaireId: assessment.questionnaireid,
+          questionnaireId: questionnaireId, // Return the category or ID as-is
           answeredQuestions: answeredCount,
           totalQuestions,
           progressPercentage,
@@ -129,23 +154,34 @@ export const startAssessment = async (req: AuthRequest, res: Response): Promise<
       return;
     }
 
-    // Create new assessment
+    // Create new assessment with actual questionnaire ID
     const insertQuery = `
       INSERT INTO Assessment (companyid, questionnaireid, status, startdate)
       VALUES ($1, $2, 'in_progress', NOW())
       RETURNING assessmentid, startdate
     `;
     
-    const insertResult = await pool.query(insertQuery, [companyId, questionnaireId]);
+    const insertResult = await pool.query(insertQuery, [companyId, actualQuestionnaireId]);
     const newAssessment = insertResult.rows[0];
     
-    // Get total questions count
-    const totalQuery = `
-      SELECT COUNT(*) as total_count 
-      FROM Question 
-      WHERE questionnaireid = $1
-    `;
-    const totalResult = await pool.query(totalQuery, [questionnaireId]);
+    // Get total questions count for this category (or all)
+    let totalQuery, totalParams;
+    if (isCategory) {
+      totalQuery = `
+        SELECT COUNT(*) as total_count 
+        FROM Question 
+        WHERE category = $1
+      `;
+      totalParams = [questionnaireId];
+    } else {
+      totalQuery = `
+        SELECT COUNT(*) as total_count 
+        FROM Question 
+        WHERE questionnaireid = $1
+      `;
+      totalParams = [actualQuestionnaireId];
+    }
+    const totalResult = await pool.query(totalQuery, totalParams);
     const totalQuestions = parseInt(totalResult.rows[0].total_count);
 
     console.log('✅ Created new assessment:', {
@@ -160,7 +196,7 @@ export const startAssessment = async (req: AuthRequest, res: Response): Promise<
       message: 'Assessment started successfully',
       data: {
         id: newAssessment.assessmentid,
-        questionnaireId: questionnaireId,
+        questionnaireId: questionnaireId, // Return original category or ID for frontend routing
         answeredQuestions: 0,
         totalQuestions,
         progressPercentage: 0,
@@ -739,6 +775,116 @@ export const getMyAssessments = async (req: AuthRequest, res: Response): Promise
 
   } catch (error) {
     console.error('Error getting user assessments:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error retrieving assessments',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+};
+
+// Get assessments grouped by category
+export const getMyAssessmentsByCategory = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const userId = req.user?.userID;
+
+    if (!userId) {
+      res.status(401).json({ success: false, message: 'Unauthorized: missing user context' });
+      return;
+    }
+
+    // Get companyId from userId
+    const companyLookupQuery = `
+      SELECT c.companyid
+      FROM Company c
+      WHERE c.userid = $1
+      LIMIT 1
+    `;
+    const companyLookupResult = await pool.query(companyLookupQuery, [userId]);
+    if (companyLookupResult.rows.length === 0) {
+      res.status(404).json({ success: false, message: 'No company associated with this user' });
+      return;
+    }
+    const companyId = companyLookupResult.rows[0].companyid;
+
+    // Get assessments with their most common category
+    const assessmentsQuery = `
+      SELECT 
+        a.assessmentid,
+        a.questionnaireid,
+        a.status,
+        a.startdate,
+        a.completiondate,
+        a.finalscore,
+        q.title AS questionnaire_title,
+        q.description AS questionnaire_description,
+        COUNT(ans.answerid) AS answered_count,
+        (SELECT COUNT(*) FROM Question WHERE questionnaireid = a.questionnaireid) AS total_count,
+        (
+          SELECT qu.category
+          FROM Question qu
+          WHERE qu.questionnaireid = a.questionnaireid
+          GROUP BY qu.category
+          ORDER BY COUNT(*) DESC
+          LIMIT 1
+        ) AS category
+      FROM Assessment a
+      LEFT JOIN Answer ans ON a.assessmentid = ans.assessmentid
+      LEFT JOIN Questionnaire q ON a.questionnaireid = q.questionnaireid
+      WHERE a.companyid = $1
+      GROUP BY 
+        a.assessmentid,
+        a.questionnaireid,
+        a.status,
+        a.startdate,
+        a.completiondate,
+        a.finalscore,
+        q.title,
+        q.description
+      ORDER BY COALESCE(a.completiondate, a.startdate) DESC
+    `;
+
+    const result = await pool.query(assessmentsQuery, [companyId]);
+    
+    // Group assessments by category
+    const grouped: Record<string, any[]> = {};
+    
+    result.rows.forEach((row: any) => {
+      const answeredCount = parseInt(row.answered_count) || 0;
+      const totalQuestions = parseInt(row.total_count) || 24;
+      const progressPercentage = totalQuestions > 0 
+        ? Math.round((answeredCount / totalQuestions) * 100)
+        : 0;
+      
+      const assessment = {
+        id: row.assessmentid,
+        questionnaireId: row.questionnaireid,
+        questionnaireTitle: row.questionnaire_title || `Mining Assessment Questionnaire ${row.questionnaireid}`,
+        questionnaireDescription: row.questionnaire_description,
+        status: row.status,
+        startDate: row.startdate,
+        completionDate: row.completiondate,
+        progressPercentage,
+        answeredQuestions: answeredCount,
+        totalQuestions,
+        finalScore: row.finalscore,
+        category: row.category || 'Uncategorized'
+      };
+      
+      const category = row.category || 'Uncategorized';
+      if (!grouped[category]) {
+        grouped[category] = [];
+      }
+      grouped[category].push(assessment);
+    });
+
+    res.status(200).json({
+      success: true,
+      data: grouped
+    });
+
+  } catch (error) {
+    console.error('Error getting assessments by category:', error);
     res.status(500).json({
       success: false,
       message: 'Error retrieving assessments',

@@ -21,8 +21,9 @@ export const assessmentService = {
   startAssessment: async (questionnaireId) => {
     try {
       console.log("🚀 Starting assessment for questionnaire:", questionnaireId);
+      // Kirim string/number sesuai kebutuhan backend
       const response = await api.post("/assessments/start", {
-        questionnaireId: parseInt(questionnaireId),
+        questionnaireId: questionnaireId,
       });
       console.log("✅ Assessment start response:", response.data);
       return response.data;
@@ -92,6 +93,17 @@ export const assessmentService = {
       return response.data;
     } catch (error) {
       console.error("Error fetching my assessments:", error);
+      throw error;
+    }
+  },
+
+  // Get assessments grouped by category
+  getMyAssessmentsByCategory: async () => {
+    try {
+      const response = await api.get("/assessments/my-assessments-by-category");
+      return response.data;
+    } catch (error) {
+      console.error("Error fetching assessments by category:", error);
       throw error;
     }
   },

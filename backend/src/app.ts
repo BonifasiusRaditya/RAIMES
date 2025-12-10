@@ -15,6 +15,7 @@ const app = express();
 const port = process.env.PORT || 3000;
 
 // Middleware
+console.log('🟢 Sebelum CORS middleware');
 app.use(cors({
     origin: [
         'http://localhost:5173', 
@@ -28,6 +29,7 @@ app.use(cors({
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization']
 }));
+console.log('🟢 Setelah CORS middleware');
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 

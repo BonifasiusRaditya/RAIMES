@@ -5,6 +5,7 @@ import {
   getAllAssessmentsWithProgress,
   getCurrentAssessment,
   getMyAssessments,
+  getMyAssessmentsByCategory,
   getMyAssessmentResults,
   updateCurrentPosition,
   getAssessmentDetail,
@@ -56,6 +57,9 @@ router.get('/statistics/:questionnaireId', getScoringStatistics);
 
 // Get user's assessments
 router.get('/my-assessments', getMyAssessments);
+
+// Get user's assessments grouped by category
+router.get('/my-assessments-by-category', getMyAssessmentsByCategory);
 
 // Get user's completed assessment results
 router.get('/results', getMyAssessmentResults);
