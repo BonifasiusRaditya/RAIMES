@@ -1178,23 +1178,24 @@ export const completeAssessment = async (req: AuthRequest, res: Response): Promi
     // Calculate final score based on all answers
     const scoreQuery = `
       SELECT 
-        COUNT(DISTINCT a.answerid) as answered_count,
-        COUNT(DISTINCT q.questionid) as total_count,
-        COALESCE(SUM(
+      COUNT(DISTINCT a.answerid) as answered_count,
+      COUNT(DISTINCT q.questionid) as total_count,
+      COALESCE(SUM(
+        CASE 
+        WHEN a.response IS NOT NULL THEN
+          -- Score based on option chosen
           CASE 
-            WHEN a.response IS NOT NULL THEN
-              -- For multiple choice, calculate percentage based on response value
-              CASE 
-                WHEN q.type = 'multiple_choice' THEN 
-                  (CAST(a.response AS DECIMAL) * q.weight / 100)
-                ELSE 
-                  -- For essay, default scoring (can be improved with AI)
-                  (q.weight * 0.7)
-              END
-            ELSE 0
+          WHEN a.response = 'option_a' THEN (q.weight * 0.0)   -- 0%
+          WHEN a.response = 'option_b' THEN (q.weight * 0.25)  -- 25%
+          WHEN a.response = 'option_c' THEN (q.weight * 0.5)   -- 50%
+          WHEN a.response = 'option_d' THEN (q.weight * 0.75)  -- 75%
+          WHEN a.response = 'option_e' THEN (q.weight * 1.0)   -- 100%
+          ELSE 0 -- Default if response doesn't match expected format
           END
-        ), 0) as total_score,
-        COALESCE(SUM(q.weight), 0) as max_score
+        ELSE 0
+        END
+      ), 0) as total_score,
+      COALESCE(SUM(q.weight), 0) as max_score
       FROM Question q
       LEFT JOIN Answer a ON q.questionid = a.questionid AND a.assessmentid = $1
       WHERE q.questionnaireid = $2
@@ -1222,8 +1223,8 @@ export const completeAssessment = async (req: AuthRequest, res: Response): Promi
     if (answeredCount < totalCount) {
       console.log('⚠️ Not all questions answered');
       res.status(400).json({
-        success: false,
-        message: `Please answer all questions. ${answeredCount}/${totalCount} answered.`
+      success: false,
+      message: `Please answer all questions. ${answeredCount}/${totalCount} answered.`
       });
       return;
     }
@@ -1237,9 +1238,9 @@ export const completeAssessment = async (req: AuthRequest, res: Response): Promi
     const updateQuery = `
       UPDATE Assessment 
       SET 
-        status = 'completed',
-        finalscore = $1,
-        completiondate = NOW()
+      status = 'completed',
+      finalscore = $1,
+      completiondate = NOW()
       WHERE assessmentid = $2
       RETURNING *
     `;
@@ -1259,13 +1260,13 @@ export const completeAssessment = async (req: AuthRequest, res: Response): Promi
       success: true,
       message: 'Assessment completed successfully!',
       data: {
-        assessmentId: updatedAssessment.assessmentid,
-        questionnaireId: updatedAssessment.questionnaireid,
-        status: updatedAssessment.status,
-        finalScore: updatedAssessment.finalscore,
-        completionDate: updatedAssessment.completiondate,
-        answeredQuestions: answeredCount,
-        totalQuestions: totalCount
+      assessmentId: updatedAssessment.assessmentid,
+      questionnaireId: updatedAssessment.questionnaireid,
+      status: updatedAssessment.status,
+      finalScore: updatedAssessment.finalscore,
+      completionDate: updatedAssessment.completiondate,
+      answeredQuestions: answeredCount,
+      totalQuestions: totalCount
       }
     });
 
