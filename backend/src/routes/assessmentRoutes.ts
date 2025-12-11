@@ -15,7 +15,8 @@ import {
   getScoringStatistics,
   saveReviewerNotes,
   uploadEvidence,
-  getEvidenceForAssessment
+  getEvidenceForAssessment,
+  deleteEvidence
 } from '../controllers/assessmentController.js';
 import { authenticateToken } from '../middleware/auth.js';
 import multer from 'multer';
@@ -74,6 +75,7 @@ router.get('/all', getAllAssessmentsWithProgress);
 router.get('/current/:questionnaireId', getCurrentAssessment);
 router.get('/detail/:assessmentId', getAssessmentDetail);
 router.get('/:assessmentId/evidence', getEvidenceForAssessment);
+router.delete('/:assessmentId/evidence/:evidenceId', deleteEvidence);
 
 // GET routes with nested paths (before generic /:id routes)
 router.get('/:assessmentId/scoring', getAssessmentScoringResult);

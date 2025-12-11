@@ -7,7 +7,8 @@ import { useAuth } from "../../context/AuthContext";
 
 function QuestionnairePage() {
   const [categories, setCategories] = useState([]);
-  const categoryRefs = useRef({});
+  const [categoryIndex, setCategoryIndex] = useState(0);
+  const contentRef = useRef(null);
 
   const { id: questionnaireId } = useParams();
   const navigate = useNavigate();
@@ -116,6 +117,7 @@ function QuestionnairePage() {
           new Set(response.data.map((q) => q.category))
         );
         setCategories(uniqueCategories);
+        setCategoryIndex(0);
         setQuestionnaire({
           id: questionnaireId,
           title: `Mining Assessment Questionnaire ${questionnaireId}`,
@@ -227,6 +229,52 @@ function QuestionnairePage() {
     return uploadedItems;
   };
 
+  const deleteEvidenceForQuestion = async (questionIdValue, evidenceId) => {
+    const effectiveAssessmentId = assessmentId || questionnaireId;
+    if (!effectiveAssessmentId) {
+      setNotification({
+        show: true,
+        message: "Unable to delete evidence: assessment not initialized.",
+        type: "error",
+      });
+      setTimeout(
+        () => setNotification({ show: false, message: "", type: "" }),
+        2500
+      );
+      return;
+    }
+
+    try {
+      await assessmentService.deleteEvidence(effectiveAssessmentId, evidenceId);
+      setEvidenceByQuestion((prev) => ({
+        ...prev,
+        [questionIdValue]: (prev[questionIdValue] || []).filter(
+          (item) => item.id !== evidenceId
+        ),
+      }));
+      setNotification({
+        show: true,
+        message: "Evidence deleted successfully.",
+        type: "success",
+      });
+    } catch (err) {
+      console.error("Error deleting evidence:", err);
+      setNotification({
+        show: true,
+        message:
+          err?.response?.data?.message ||
+          err?.message ||
+          "Failed to delete evidence. Please try again.",
+        type: "error",
+      });
+    } finally {
+      setTimeout(
+        () => setNotification({ show: false, message: "", type: "" }),
+        2500
+      );
+    }
+  };
+
   const handleAnswerChange = (questionId, answer) => {
     setAnswers((prev) => {
       const newAnswers = {
@@ -261,9 +309,15 @@ function QuestionnairePage() {
   };
 
   const scrollToCategory = (category) => {
-    const target = categoryRefs.current[category];
-    if (target) {
-      target.scrollIntoView({ behavior: "smooth", block: "start" });
+    const idx = categories.findIndex((c) => c === category);
+    if (idx !== -1) {
+      setCategoryIndex(idx);
+      if (contentRef.current) {
+        contentRef.current.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
+      }
     }
   };
 
@@ -714,7 +768,11 @@ function QuestionnairePage() {
                       <button
                         key={cat}
                         onClick={() => scrollToCategory(cat)}
-                        className="w-full text-left px-3 py-2 rounded-lg border border-transparent hover:border-raimes-purple hover:bg-purple-50 text-sm font-medium text-gray-800 transition-colors"
+                        className={`w-full text-left px-3 py-2 rounded-lg border text-sm font-medium transition-colors ${
+                          categoryIndex === idx
+                            ? "border-raimes-purple bg-purple-50 text-raimes-purple shadow-sm"
+                            : "border-transparent hover:border-raimes-purple hover:bg-purple-50 text-gray-800"
+                        }`}
                       >
                         <span className="text-xs text-gray-500 mr-2">
                           {idx + 1}.
@@ -726,122 +784,289 @@ function QuestionnairePage() {
                 </div>
               </aside>
 
-              <div className="space-y-12">
-                {(() => {
-                  const categoryStartIndex = {};
-                  let running = 0;
-                  categories.forEach((cat) => {
-                    categoryStartIndex[cat] = running;
-                    running += questions.filter(
-                      (q) => q.category === cat
-                    ).length;
-                  });
+              <div ref={contentRef} className="space-y-6">
+                <div className="flex items-center justify-between mb-2">
+                  <div>
+                    <p className="text-xs uppercase tracking-wide text-gray-500">
+                      Category
+                    </p>
+                    <h2 className="text-2xl font-bold text-raimes-purple">
+                      {categories[categoryIndex]}
+                    </h2>
+                  </div>
+                  <div className="text-sm text-gray-500">
+                    {
+                      questions.filter(
+                        (q) => q.category === categories[categoryIndex]
+                      ).length
+                    }{" "}
+                    question(s)
+                  </div>
+                </div>
 
-                  return categories.map((cat) => {
-                    const catQuestions = questions.filter(
-                      (q) => q.category === cat
-                    );
-                    if (catQuestions.length === 0) return null;
+                <div className="space-y-10">
+                  {questions
+                    .filter((q) => q.category === categories[categoryIndex])
+                    .map((question, index) => {
+                      const questionId =
+                        question.questionID ||
+                        question.questionid ||
+                        question.id;
+                      const questionOptions = question.options || {};
+                      const questionNumber = index + 1;
 
-                    return (
-                      <section
-                        key={cat}
-                        ref={(el) => {
-                          categoryRefs.current[cat] = el;
-                        }}
-                        className="scroll-mt-28"
-                      >
-                        <div className="flex items-center justify-between mb-4">
-                          <div>
-                            <p className="text-xs uppercase tracking-wide text-gray-500">
-                              Category
+                      return (
+                        <div
+                          key={`question-${questionId}`}
+                          className="border-2 border-gray-200 rounded-lg p-6 hover:border-raimes-purple transition-all"
+                        >
+                          {/* Question Header */}
+                          <div className="mb-6 pb-4 border-b border-gray-200">
+                            <div className="flex items-start justify-between mb-3">
+                              <h3 className="text-xl font-bold text-raimes-purple">
+                                Question {questionNumber}
+                              </h3>
+                              <span className="px-3 py-1 bg-purple-100 text-raimes-purple text-sm font-medium rounded-full">
+                                {question.category}
+                              </span>
+                            </div>
+                            <p className="text-gray-900 font-medium text-lg leading-relaxed">
+                              {question.text}
                             </p>
-                            <h2 className="text-2xl font-bold text-raimes-purple">
-                              {cat}
-                            </h2>
+                            <div className="mt-3 flex flex-wrap gap-3 text-xs text-gray-500">
+                              <span className="flex items-center gap-1">
+                                <svg
+                                  className="w-4 h-4"
+                                  fill="currentColor"
+                                  viewBox="0 0 20 20"
+                                >
+                                  <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" />
+                                  <path
+                                    fillRule="evenodd"
+                                    d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z"
+                                    clipRule="evenodd"
+                                  />
+                                </svg>
+                                Type: {question.type}
+                              </span>
+                              <span className="flex items-center gap-1">
+                                <svg
+                                  className="w-4 h-4"
+                                  fill="currentColor"
+                                  viewBox="0 0 20 20"
+                                >
+                                  <path
+                                    fillRule="evenodd"
+                                    d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z"
+                                    clipRule="evenodd"
+                                  />
+                                </svg>
+                                Weight: {question.weight}/10
+                              </span>
+                              <span className="flex items-center gap-1">
+                                {question.require_evidence ? (
+                                  <>
+                                    <svg
+                                      className="w-4 h-4 text-red-500"
+                                      fill="currentColor"
+                                      viewBox="0 0 20 20"
+                                    >
+                                      <path
+                                        fillRule="evenodd"
+                                        d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                                        clipRule="evenodd"
+                                      />
+                                    </svg>{" "}
+                                    Evidence Required
+                                  </>
+                                ) : (
+                                  <>
+                                    <svg
+                                      className="w-4 h-4"
+                                      fill="currentColor"
+                                      viewBox="0 0 20 20"
+                                    >
+                                      <path
+                                        fillRule="evenodd"
+                                        d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                                        clipRule="evenodd"
+                                      />
+                                    </svg>{" "}
+                                    Evidence Optional
+                                  </>
+                                )}
+                              </span>
+                            </div>
                           </div>
-                          <div className="text-sm text-gray-500">
-                            {catQuestions.length} question
-                            {catQuestions.length > 1 ? "s" : ""}
-                          </div>
-                        </div>
-
-                        <div className="space-y-10">
-                          {catQuestions.map((question, index) => {
-                            const questionId =
-                              question.questionID ||
-                              question.questionid ||
-                              question.id;
-                            const questionOptions = question.options || {};
-                            const questionNumber =
-                              (categoryStartIndex[cat] || 0) + index + 1;
-
-                            return (
-                              <div
-                                key={`question-${questionId}`}
-                                className="border-2 border-gray-200 rounded-lg p-6 hover:border-raimes-purple transition-all"
-                              >
-                                {/* Question Header */}
-                                <div className="mb-6 pb-4 border-b border-gray-200">
-                                  <div className="flex items-start justify-between mb-3">
-                                    <h3 className="text-xl font-bold text-raimes-purple">
-                                      Question {questionNumber}
-                                    </h3>
-                                    <span className="px-3 py-1 bg-purple-100 text-raimes-purple text-sm font-medium rounded-full">
-                                      {question.category}
-                                    </span>
+                          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                            {/* Answer Section */}
+                            <div>
+                              <label className="block text-sm font-semibold text-gray-700 mb-3">
+                                Your Answer
+                              </label>
+                              {question.type === "essay" && (
+                                <>
+                                  <textarea
+                                    value={answers[questionId] || ""}
+                                    onChange={(e) =>
+                                      handleAnswerChange(
+                                        questionId,
+                                        e.target.value
+                                      )
+                                    }
+                                    placeholder="Please provide a detailed answer..."
+                                    className="w-full h-48 p-4 border-2 border-gray-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-raimes-purple focus:border-raimes-purple placeholder-gray-400"
+                                  />
+                                  <div className="mt-2 text-sm text-gray-500">
+                                    {(answers[questionId] || "").length}/1000
+                                    characters
                                   </div>
-                                  <p className="text-gray-900 font-medium text-lg leading-relaxed">
-                                    {question.text}
+                                </>
+                              )}
+                              {question.type === "multiple_choice" && (
+                                <div className="space-y-3">
+                                  {[
+                                    "option_a",
+                                    "option_b",
+                                    "option_c",
+                                    "option_d",
+                                    "option_e",
+                                  ].map((optionKey) => {
+                                    const optionValue =
+                                      questionOptions[optionKey];
+                                    if (!optionValue) return null;
+                                    return (
+                                      <label
+                                        key={`${questionId}-${optionKey}`}
+                                        className="flex items-start space-x-3 p-4 border-2 border-gray-200 rounded-lg hover:bg-purple-50 hover:border-raimes-purple cursor-pointer transition-all"
+                                      >
+                                        <input
+                                          type="radio"
+                                          name={`question_${questionId}`}
+                                          value={optionValue}
+                                          checked={
+                                            String(answers[questionId]) ===
+                                            String(optionValue)
+                                          }
+                                          onChange={(e) =>
+                                            handleAnswerChange(
+                                              questionId,
+                                              e.target.value
+                                            )
+                                          }
+                                          className="mt-1 h-4 w-4 text-raimes-purple focus:ring-raimes-purple"
+                                        />
+                                        <div className="flex-1">
+                                          <p className="text-sm text-gray-900 leading-snug font-medium">
+                                            {optionValue}
+                                          </p>
+                                        </div>
+                                      </label>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                              <button
+                                onClick={() => handleSaveAnswer(questionId)}
+                                className="mt-4 w-full px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition-colors flex items-center justify-center gap-2"
+                              >
+                                <svg
+                                  className="w-5 h-5"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"
+                                  />
+                                </svg>
+                                Save Answer
+                              </button>
+                            </div>
+                            {/* File Upload Section */}
+                            <div>
+                              <label className="block text-sm font-semibold text-gray-700 mb-3">
+                                Supporting Evidence
+                                {question.require_evidence && (
+                                  <span className="text-red-500 ml-1">*</span>
+                                )}
+                                {!question.require_evidence && (
+                                  <span className="text-gray-400 ml-1">
+                                    (Optional)
+                                  </span>
+                                )}
+                              </label>
+                              <div
+                                onDrop={(e) => handleDrop(e, questionId)}
+                                onDragOver={handleDragOver}
+                                className="h-48 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:border-raimes-purple hover:bg-purple-50 transition-colors"
+                                onClick={() =>
+                                  document
+                                    .getElementById(`fileInput_${questionId}`)
+                                    .click()
+                                }
+                              >
+                                <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mb-3">
+                                  <svg
+                                    className="w-8 h-8 text-raimes-purple"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                  >
+                                    <path
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      strokeWidth={2}
+                                      d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+                                    />
+                                  </svg>
+                                </div>
+                                <p className="text-sm text-gray-600 mb-1">
+                                  Drop files here or click to upload
+                                </p>
+                                <p className="text-xs text-gray-400">
+                                  PDF, DOC, DOCX, or images (max 10MB)
+                                </p>
+                              </div>
+                              <input
+                                id={`fileInput_${questionId}`}
+                                type="file"
+                                multiple
+                                onChange={(e) =>
+                                  handleFileChange(e, questionId)
+                                }
+                                className="hidden"
+                                accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                              />
+                              {files[questionId]?.length > 0 && (
+                                <div className="mt-3 space-y-2">
+                                  <p className="text-xs font-medium text-gray-600">
+                                    Files ready to upload:
                                   </p>
-                                  <div className="mt-3 flex flex-wrap gap-3 text-xs text-gray-500">
-                                    <span className="flex items-center gap-1">
-                                      <svg
-                                        className="w-4 h-4"
-                                        fill="currentColor"
-                                        viewBox="0 0 20 20"
+                                  <ul className="space-y-1">
+                                    {files[questionId].map((file, idx) => (
+                                      <li
+                                        key={idx}
+                                        className="flex items-center justify-between text-sm bg-gray-50 px-3 py-2 rounded"
                                       >
-                                        <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" />
-                                        <path
-                                          fillRule="evenodd"
-                                          d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z"
-                                          clipRule="evenodd"
-                                        />
-                                      </svg>
-                                      Type: {question.type}
-                                    </span>
-                                    <span className="flex items-center gap-1">
-                                      <svg
-                                        className="w-4 h-4"
-                                        fill="currentColor"
-                                        viewBox="0 0 20 20"
-                                      >
-                                        <path
-                                          fillRule="evenodd"
-                                          d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z"
-                                          clipRule="evenodd"
-                                        />
-                                      </svg>
-                                      Weight: {question.weight}/10
-                                    </span>
-                                    <span className="flex items-center gap-1">
-                                      {question.require_evidence ? (
-                                        <>
-                                          <svg
-                                            className="w-4 h-4 text-red-500"
-                                            fill="currentColor"
-                                            viewBox="0 0 20 20"
-                                          >
-                                            <path
-                                              fillRule="evenodd"
-                                              d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
-                                              clipRule="evenodd"
-                                            />
-                                          </svg>{" "}
-                                          Evidence Required
-                                        </>
-                                      ) : (
-                                        <>
+                                        <span className="text-gray-700 truncate">
+                                          {file.name}
+                                        </span>
+                                        <button
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            setFiles((prev) => ({
+                                              ...prev,
+                                              [questionId]: prev[
+                                                questionId
+                                              ].filter((_, i) => i !== idx),
+                                            }));
+                                          }}
+                                          className="text-red-500 hover:text-red-700 ml-2"
+                                        >
                                           <svg
                                             className="w-4 h-4"
                                             fill="currentColor"
@@ -849,257 +1074,87 @@ function QuestionnairePage() {
                                           >
                                             <path
                                               fillRule="evenodd"
-                                              d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                                              d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
                                               clipRule="evenodd"
                                             />
-                                          </svg>{" "}
-                                          Evidence Optional
-                                        </>
-                                      )}
-                                    </span>
-                                  </div>
+                                          </svg>
+                                        </button>
+                                      </li>
+                                    ))}
+                                  </ul>
                                 </div>
-                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                                  {/* Answer Section */}
-                                  <div>
-                                    <label className="block text-sm font-semibold text-gray-700 mb-3">
-                                      Your Answer
-                                    </label>
-                                    {question.type === "essay" && (
-                                      <>
-                                        <textarea
-                                          value={answers[questionId] || ""}
-                                          onChange={(e) =>
-                                            handleAnswerChange(
-                                              questionId,
-                                              e.target.value
-                                            )
-                                          }
-                                          placeholder="Please provide a detailed answer..."
-                                          className="w-full h-48 p-4 border-2 border-gray-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-raimes-purple focus:border-raimes-purple placeholder-gray-400"
-                                        />
-                                        <div className="mt-2 text-sm text-gray-500">
-                                          {(answers[questionId] || "").length}
-                                          /1000 characters
-                                        </div>
-                                      </>
-                                    )}
-                                    {question.type === "multiple_choice" && (
-                                      <div className="space-y-3">
-                                        {[
-                                          "option_a",
-                                          "option_b",
-                                          "option_c",
-                                          "option_d",
-                                          "option_e",
-                                        ].map((optionKey) => {
-                                          const optionValue =
-                                            questionOptions[optionKey];
-                                          if (!optionValue) return null;
-                                          return (
-                                            <label
-                                              key={`${questionId}-${optionKey}`}
-                                              className="flex items-start space-x-3 p-4 border-2 border-gray-200 rounded-lg hover:bg-purple-50 hover:border-raimes-purple cursor-pointer transition-all"
-                                            >
-                                              <input
-                                                type="radio"
-                                                name={`question_${questionId}`}
-                                                value={optionValue}
-                                                checked={
-                                                  String(
-                                                    answers[questionId]
-                                                  ) === String(optionValue)
-                                                }
-                                                onChange={(e) =>
-                                                  handleAnswerChange(
-                                                    questionId,
-                                                    e.target.value
-                                                  )
-                                                }
-                                                className="mt-1 h-4 w-4 text-raimes-purple focus:ring-raimes-purple"
-                                              />
-                                              <div className="flex-1">
-                                                <p className="text-sm text-gray-900 leading-snug font-medium">
-                                                  {optionValue}
-                                                </p>
-                                              </div>
-                                            </label>
-                                          );
-                                        })}
-                                      </div>
-                                    )}
-                                    <button
-                                      onClick={() =>
-                                        handleSaveAnswer(questionId)
-                                      }
-                                      className="mt-4 w-full px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition-colors flex items-center justify-center gap-2"
-                                    >
-                                      <svg
-                                        className="w-5 h-5"
-                                        fill="none"
-                                        stroke="currentColor"
-                                        viewBox="0 0 24 24"
-                                      >
-                                        <path
-                                          strokeLinecap="round"
-                                          strokeLinejoin="round"
-                                          strokeWidth={2}
-                                          d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"
-                                        />
-                                      </svg>
-                                      Save Answer
-                                    </button>
-                                  </div>
-                                  {/* File Upload Section */}
-                                  <div>
-                                    <label className="block text-sm font-semibold text-gray-700 mb-3">
-                                      Supporting Evidence
-                                      {question.require_evidence && (
-                                        <span className="text-red-500 ml-1">
-                                          *
-                                        </span>
-                                      )}
-                                      {!question.require_evidence && (
-                                        <span className="text-gray-400 ml-1">
-                                          (Optional)
-                                        </span>
-                                      )}
-                                    </label>
-                                    <div
-                                      onDrop={(e) => handleDrop(e, questionId)}
-                                      onDragOver={handleDragOver}
-                                      className="h-48 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:border-raimes-purple hover:bg-purple-50 transition-colors"
-                                      onClick={() =>
-                                        document
-                                          .getElementById(
-                                            `fileInput_${questionId}`
-                                          )
-                                          .click()
-                                      }
-                                    >
-                                      <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mb-3">
-                                        <svg
-                                          className="w-8 h-8 text-raimes-purple"
-                                          fill="none"
-                                          stroke="currentColor"
-                                          viewBox="0 0 24 24"
+                              )}
+                              {evidenceByQuestion[questionId]?.length > 0 && (
+                                <div className="mt-3 space-y-2">
+                                  <p className="text-xs font-medium text-gray-600">
+                                    Saved Evidence:
+                                  </p>
+                                  <ul className="space-y-1">
+                                    {evidenceByQuestion[questionId].map(
+                                      (item) => (
+                                        <li
+                                          key={item.id}
+                                          className="flex items-center justify-between text-sm bg-green-50 px-3 py-2 rounded"
                                         >
-                                          <path
-                                            strokeLinecap="round"
-                                            strokeLinejoin="round"
-                                            strokeWidth={2}
-                                            d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
-                                          />
-                                        </svg>
-                                      </div>
-                                      <p className="text-sm text-gray-600 mb-1">
-                                        Drop files here or click to upload
-                                      </p>
-                                      <p className="text-xs text-gray-400">
-                                        PDF, DOC, DOCX, or images (max 10MB)
-                                      </p>
-                                    </div>
-                                    <input
-                                      id={`fileInput_${questionId}`}
-                                      type="file"
-                                      multiple
-                                      onChange={(e) =>
-                                        handleFileChange(e, questionId)
-                                      }
-                                      className="hidden"
-                                      accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
-                                    />
-                                    {files[questionId]?.length > 0 && (
-                                      <div className="mt-3 space-y-2">
-                                        <p className="text-xs font-medium text-gray-600">
-                                          Files ready to upload:
-                                        </p>
-                                        <ul className="space-y-1">
-                                          {files[questionId].map(
-                                            (file, idx) => (
-                                              <li
-                                                key={idx}
-                                                className="flex items-center justify-between text-sm bg-gray-50 px-3 py-2 rounded"
+                                          <a
+                                            href={item.url}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="text-raimes-purple hover:underline truncate"
+                                          >
+                                            {item.filename}
+                                          </a>
+                                          <div className="flex items-center gap-3">
+                                            <span className="text-xs text-gray-500 whitespace-nowrap">
+                                              {item.uploadedAt
+                                                ? new Date(
+                                                    item.uploadedAt
+                                                  ).toLocaleString()
+                                                : ""}
+                                            </span>
+                                            <button
+                                              onClick={(e) => {
+                                                e.preventDefault();
+                                                if (
+                                                  window.confirm(
+                                                    "Delete this evidence file?"
+                                                  )
+                                                ) {
+                                                  deleteEvidenceForQuestion(
+                                                    questionId,
+                                                    item.id
+                                                  );
+                                                }
+                                              }}
+                                              className="text-red-600 hover:text-red-800"
+                                            >
+                                              <svg
+                                                className="w-4 h-4"
+                                                fill="none"
+                                                stroke="currentColor"
+                                                viewBox="0 0 24 24"
                                               >
-                                                <span className="text-gray-700 truncate">
-                                                  {file.name}
-                                                </span>
-                                                <button
-                                                  onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    setFiles((prev) => ({
-                                                      ...prev,
-                                                      [questionId]: prev[
-                                                        questionId
-                                                      ].filter(
-                                                        (_, i) => i !== idx
-                                                      ),
-                                                    }));
-                                                  }}
-                                                  className="text-red-500 hover:text-red-700 ml-2"
-                                                >
-                                                  <svg
-                                                    className="w-4 h-4"
-                                                    fill="currentColor"
-                                                    viewBox="0 0 20 20"
-                                                  >
-                                                    <path
-                                                      fillRule="evenodd"
-                                                      d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-                                                      clipRule="evenodd"
-                                                    />
-                                                  </svg>
-                                                </button>
-                                              </li>
-                                            )
-                                          )}
-                                        </ul>
-                                      </div>
+                                                <path
+                                                  strokeLinecap="round"
+                                                  strokeLinejoin="round"
+                                                  strokeWidth={2}
+                                                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                                                />
+                                              </svg>
+                                            </button>
+                                          </div>
+                                        </li>
+                                      )
                                     )}
-                                    {evidenceByQuestion[questionId]?.length >
-                                      0 && (
-                                      <div className="mt-3 space-y-2">
-                                        <p className="text-xs font-medium text-gray-600">
-                                          Saved Evidence:
-                                        </p>
-                                        <ul className="space-y-1">
-                                          {evidenceByQuestion[questionId].map(
-                                            (item) => (
-                                              <li
-                                                key={item.id}
-                                                className="flex items-center justify-between text-sm bg-green-50 px-3 py-2 rounded"
-                                              >
-                                                <a
-                                                  href={item.url}
-                                                  target="_blank"
-                                                  rel="noopener noreferrer"
-                                                  className="text-raimes-purple hover:underline truncate"
-                                                >
-                                                  {item.filename}
-                                                </a>
-                                                <span className="text-xs text-gray-500 ml-2 whitespace-nowrap">
-                                                  {item.uploadedAt
-                                                    ? new Date(
-                                                        item.uploadedAt
-                                                      ).toLocaleString()
-                                                    : ""}
-                                                </span>
-                                              </li>
-                                            )
-                                          )}
-                                        </ul>
-                                      </div>
-                                    )}
-                                  </div>
+                                  </ul>
                                 </div>
-                              </div>
-                            );
-                          })}
+                              )}
+                            </div>
+                          </div>
                         </div>
-                      </section>
-                    );
-                  });
-                })()}
+                      );
+                    })}
+                </div>
               </div>
             </div>
           )}

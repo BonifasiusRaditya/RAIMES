@@ -1,4 +1,5 @@
 import type { Request, Response } from 'express';
+import fs from 'fs/promises';
 import path from 'path';
 import pool from '../config/database.js';
 
@@ -622,6 +623,98 @@ export const getEvidenceForAssessment = async (req: AuthRequest, res: Response):
     res.status(500).json({
       success: false,
       message: 'Error fetching evidence',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+};
+
+// Delete a specific evidence file for an assessment
+export const deleteEvidence = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { assessmentId, evidenceId } = req.params;
+    const userId = req.user?.userID;
+    const userRole = req.user?.role;
+
+    if (!userId) {
+      res.status(401).json({ success: false, message: 'Unauthorized: missing user context' });
+      return;
+    }
+
+    const assessmentIdNum = Number(assessmentId);
+    const evidenceIdNum = Number(evidenceId);
+
+    if (Number.isNaN(assessmentIdNum) || Number.isNaN(evidenceIdNum)) {
+      res.status(400).json({ success: false, message: 'assessmentId and evidenceId must be valid numbers' });
+      return;
+    }
+
+    await ensureEvidenceTable();
+
+    const evidenceQuery = `
+      SELECT 
+        e.evidenceid,
+        e.storagepath,
+        e.filename,
+        ans.answerid,
+        ans.questionid,
+        ans.assessmentid,
+        a.companyid
+      FROM Evidence e
+      JOIN Answer ans ON e.answerid = ans.answerid
+      JOIN Assessment a ON ans.assessmentid = a.assessmentid
+      WHERE e.evidenceid = $1 AND ans.assessmentid = $2
+    `;
+
+    const evidenceResult = await pool.query(evidenceQuery, [evidenceIdNum, assessmentIdNum]);
+
+    if (evidenceResult.rows.length === 0) {
+      res.status(404).json({ success: false, message: 'Evidence not found for this assessment' });
+      return;
+    }
+
+    const evidenceRow = evidenceResult.rows[0];
+
+    if (userRole !== 'admin' && userRole !== 'auditor') {
+      const companyLookup = await pool.query('SELECT companyid FROM Company WHERE userid = $1', [userId]);
+      const userCompanyId = companyLookup.rows[0]?.companyid;
+      if (!userCompanyId || userCompanyId !== evidenceRow.companyid) {
+        res.status(403).json({ success: false, message: 'Access denied for this evidence' });
+        return;
+      }
+    }
+
+    const storedFilename = evidenceRow.filename || path.basename(evidenceRow.storagepath || '');
+    const relativePath = evidenceRow.storagepath || path.join('uploads', 'evidence', storedFilename);
+    const absolutePath = path.isAbsolute(relativePath)
+      ? relativePath
+      : path.resolve(process.cwd(), relativePath);
+
+    await pool.query('DELETE FROM Evidence WHERE evidenceid = $1', [evidenceIdNum]);
+
+    try {
+      await fs.unlink(absolutePath);
+    } catch (unlinkError) {
+      // Ignore missing file errors to avoid blocking the API
+      if ((unlinkError as NodeJS.ErrnoException).code !== 'ENOENT') {
+        console.warn('Warning: could not delete evidence file from disk', unlinkError);
+      }
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Evidence deleted successfully',
+      data: {
+        evidenceId: evidenceIdNum,
+        questionId: evidenceRow.questionid,
+        answerId: evidenceRow.answerid
+      }
+    });
+
+  } catch (error) {
+    console.error('Error deleting evidence:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error deleting evidence',
       error: error instanceof Error ? error.message : 'Unknown error'
     });
   }

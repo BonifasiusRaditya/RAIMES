@@ -172,6 +172,19 @@ export const assessmentService = {
     }
   },
 
+  // Delete evidence file
+  deleteEvidence: async (assessmentId, evidenceId) => {
+    try {
+      const response = await api.delete(
+        `/assessments/${assessmentId}/evidence/${evidenceId}`
+      );
+      return response.data;
+    } catch (error) {
+      console.error("Error deleting evidence:", error);
+      throw error;
+    }
+  },
+
   // Complete assessment
   completeAssessment: async (questionnaireId) => {
     try {
