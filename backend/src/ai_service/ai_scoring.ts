@@ -1,4 +1,7 @@
 import pool from '../config/database.js';
+import fs from 'fs';
+import FormData from 'form-data';
+import nodeFetch from 'node-fetch';
 
 // Types for AI Scoring Service
 interface AssessmentData {
@@ -36,7 +39,10 @@ interface ScoringRequest {
 
 interface AIEngineResponse {
   success: boolean;
-  scoring?: ScoringResult;
+  score?: number;
+  analysis?: string; // Add analysis field
+  evaluation_date?: string;
+  score_details?: any;
   error?: string;
 }
 
@@ -57,6 +63,7 @@ interface ScoringResult {
 
 // AI Engine configuration
 const AI_ENGINE_URL = process.env.AI_ENGINE_URL || 'https://ai-engine-raimes.vercel.app';
+const AI_SCORING_ENDPOINT = `${AI_ENGINE_URL}/analyze-mining-questionnaire`;
 
 /**
  * Get assessment data with all answers and questions
@@ -133,50 +140,114 @@ export const getAssessmentData = async (
 
 /**
  * Prepare data for AI Engine scoring
+ * Converts assessment data into the format expected by the AI engine
  */
-export const prepareScoringData = (assessmentData: AssessmentData): ScoringRequest => {
-  const scoringData: ScoringRequest = {
-    assessmentid: assessmentData.assessmentid,
-    answers: [],
-  };
+export const prepareScoringData = (assessmentData: AssessmentData): string => {
+  // Build questionnaire text with all questions and answers in detailed format
+  let questionnaireText = `MINING ASSESSMENT EVALUATION\n`;
+  questionnaireText += `Assessment ID: ${assessmentData.assessmentid}\n`;
+  questionnaireText += `Company ID: ${assessmentData.companyid}\n`;
+  questionnaireText += `Total Questions: ${assessmentData.questions.length}\n\n`;
 
-  // Map answers to questions
-  for (const question of assessmentData.questions) {
-    const answer = assessmentData.answers.find(
-      (a) => a.questionid === question.questionid
-    );
+  // Group by category for better organization
+  const categorizedQuestions: { [key: string]: any[] } = {};
+  
+  assessmentData.questions.forEach(question => {
+    const category = question.category || 'General';
+    if (!categorizedQuestions[category]) {
+      categorizedQuestions[category] = [];
+    }
+    categorizedQuestions[category].push(question);
+  });
 
-    scoringData.answers.push({
-      questionid: question.questionid,
-      text: question.text,
-      answer: answer?.response || '',
-      category: question.category,
-      weight: question.weight,
+  // Calculate total possible score
+  let totalMaxScore = 0;
+  let totalEarnedScore = 0;
+
+  // Format each category with detailed scoring information
+  Object.entries(categorizedQuestions).forEach(([category, questions]) => {
+    questionnaireText += `\n=== CATEGORY: ${category.toUpperCase()} ===\n\n`;
+    
+    questions.forEach(question => {
+      const answer = assessmentData.answers.find(
+        (a) => a.questionid === question.questionid
+      );
+      
+      // Calculate earned points based on answer
+      let earnedPoints = 0;
+      let answerPercentage = 0;
+      
+      if (answer?.response) {
+        if (answer.response === 'option_a') answerPercentage = 0;
+        else if (answer.response === 'option_b') answerPercentage = 25;
+        else if (answer.response === 'option_c') answerPercentage = 50;
+        else if (answer.response === 'option_d') answerPercentage = 75;
+        else if (answer.response === 'option_e') answerPercentage = 100;
+        
+        earnedPoints = (question.weight * answerPercentage) / 100;
+      }
+      
+      totalMaxScore += question.weight;
+      totalEarnedScore += earnedPoints;
+      
+      questionnaireText += `Question ${question.questionid}: ${question.text}\n`;
+      questionnaireText += `Max Points: ${question.weight}\n`;
+      questionnaireText += `Selected Answer: ${answer?.response || 'Not answered'} (${answerPercentage}%)\n`;
+      questionnaireText += `Earned Points: ${earnedPoints.toFixed(2)}\n`;
+      
+      // Add answer text if it's not a simple option
+      if (answer?.response && !answer.response.startsWith('option_')) {
+        questionnaireText += `Answer Details: ${answer.response}\n`;
+      }
+      
+      questionnaireText += `\n`;
     });
-  }
+  });
 
-  return scoringData;
+  // Add summary
+  questionnaireText += `\n=== ASSESSMENT SUMMARY ===\n`;
+  questionnaireText += `Total Max Points: ${totalMaxScore}\n`;
+  questionnaireText += `Total Earned Points: ${totalEarnedScore.toFixed(2)}\n`;
+  questionnaireText += `Preliminary Score: ${totalMaxScore > 0 ? ((totalEarnedScore / totalMaxScore) * 100).toFixed(2) : 0}%\n`;
+
+  return questionnaireText;
 };
 
 /**
  * Call AI Engine for scoring
  */
 export const callAIEngine = async (
-  scoringData: ScoringRequest
+  questionnaireText: string,
+  assessmentId: number,
+  evidenceFilePath?: string | null
 ): Promise<AIEngineResponse> => {
   try {
-    console.log(`🤖 Calling AI Engine at ${AI_ENGINE_URL}/api/score`);
-    console.log('📊 Scoring data:', {
-      assessmentid: scoringData.assessmentid,
-      answersCount: scoringData.answers.length,
-    });
+    console.log(`🤖 Calling AI Engine at ${AI_SCORING_ENDPOINT}`);
+    console.log('📊 Sending questionnaire_answers text length:', questionnaireText.length);
 
-    const response = await fetch(`${AI_ENGINE_URL}/api/score`, {
+    const formData = new FormData();
+    formData.append('questionnaire_answers', questionnaireText);
+
+    if (evidenceFilePath && fs.existsSync(evidenceFilePath)) {
+      try {
+        const fileStream = fs.createReadStream(evidenceFilePath);
+        const fileName = evidenceFilePath.split(/[\\/]/).pop() || 'evidence.pdf';
+        formData.append('supporting_file', fileStream, fileName);
+        console.log('📎 Attached supporting_file to AI request:', fileName);
+      } catch (fileErr) {
+        console.warn('⚠️ Could not attach evidence file to AI request:', fileErr);
+      }
+    }
+
+    // Get form-data headers and merge with fetch
+    const formHeaders = formData.getHeaders();
+    console.log('📋 Form content-type:', formHeaders['content-type']);
+
+    // Use node-fetch v2 which properly supports form-data
+    const response = await nodeFetch(AI_SCORING_ENDPOINT, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(scoringData),
+      body: formData,
+      headers: formHeaders,
     });
 
     if (!response.ok) {
@@ -184,7 +255,6 @@ export const callAIEngine = async (
       const errorText = await response.text();
       console.error('Error response:', errorText);
 
-      // Return fallback scoring if AI Engine fails
       return {
         success: false,
         error: `AI Engine error: ${response.status}`,
@@ -192,12 +262,36 @@ export const callAIEngine = async (
     }
 
     const result = await response.json();
-    console.log('✅ AI Engine response received');
+    console.log('✅ AI Engine response received:', JSON.stringify(result, null, 2));
+    console.log('🔍 Checking analysis field:', {
+      hasAnalysis: 'analysis' in result,
+      analysisType: typeof result.analysis,
+      analysisLength: result.analysis?.length || 0,
+      analysisPreview: result.analysis?.substring(0, 100)
+    });
 
-    return {
-      success: true,
-      scoring: result as ScoringResult,
-    };
+    // Extract score and analysis from response
+    if (result && typeof result.score === 'number') {
+      console.log('✅ Returning AI response with:', {
+        score: result.score,
+        hasAnalysis: !!result.analysis,
+        analysisLength: result.analysis?.length || 0
+      });
+      
+      return {
+        success: true,
+        score: result.score,
+        analysis: result.analysis || null, // Add analysis field
+        evaluation_date: result.evaluation_date,
+        score_details: result.score_details,
+      };
+    } else {
+      console.error('Invalid AI Engine response format:', result);
+      return {
+        success: false,
+        error: 'Invalid response format from AI Engine',
+      };
+    }
   } catch (error) {
     console.error('Error calling AI Engine:', error);
     return {
@@ -315,15 +409,16 @@ export const calculateFallbackScore = (assessmentData: AssessmentData): ScoringR
 };
 
 /**
- * Score an assessment using AI Engine
+ * Request AI scoring for an assessment and return just the score
  */
-export const scoreAssessment = async (assessmentid: number): Promise<{
+export const getAIScoreForAssessment = async (assessmentid: number, evidenceFilePath?: string | null): Promise<{
   success: boolean;
-  scoring?: ScoringResult;
+  score?: number;
+  analysis?: string | undefined;
   error?: string;
 }> => {
   try {
-    console.log(`\n🎯 Starting assessment scoring for ID: ${assessmentid}`);
+    console.log(`\n🎯 Requesting AI score for assessment ID: ${assessmentid}`);
 
     // Get assessment data
     const assessmentData = await getAssessmentData(assessmentid);
@@ -340,68 +435,99 @@ export const scoreAssessment = async (assessmentid: number): Promise<{
       answersCount: assessmentData.answers.length,
     });
 
-    // Validate that all questions are answered
-    const unansweredQuestions = assessmentData.questions.filter(
-      (q) => !assessmentData.answers.find((a) => a.questionid === q.questionid)
-    );
+    // Prepare scoring data (questionnaire_answers text)
+    const questionnaireText = prepareScoringData(assessmentData);
+    console.log('✅ questionnaire_answers text prepared, length:', questionnaireText.length);
 
-    if (unansweredQuestions.length > 0) {
-      console.warn(`⚠️ ${unansweredQuestions.length} questions are not answered`);
+    // Call AI Engine using multipart/form-data with optional supporting_file
+    const aiResponse = await callAIEngine(questionnaireText, assessmentid, evidenceFilePath);
+
+    if (aiResponse.success && typeof aiResponse.score === 'number') {
+      console.log('🎉 AI Engine scoring successful, score:', aiResponse.score);
+      console.log('📝 AI analysis text length:', aiResponse.analysis?.length || 0);
+      console.log('📝 AI analysis preview:', aiResponse.analysis?.substring(0, 200));
+      
+      // Update assessment with AI score AND analysis
+      const updateQuery = `
+        UPDATE Assessment
+        SET 
+          finalscore = $1,
+          aianalysis = $2,
+          completiondate = COALESCE(completiondate, NOW())
+        WHERE assessmentid = $3
+        RETURNING assessmentid, finalscore, aianalysis, LENGTH(aianalysis) as analysis_length
+      `;
+
+      const updateResult = await pool.query(updateQuery, [
+        aiResponse.score,
+        aiResponse.analysis || null,
+        assessmentid
+      ]);
+      
+      console.log('✅ AI score and analysis saved to database');
+      console.log('📊 Database update result:', {
+        assessmentid: updateResult.rows[0].assessmentid,
+        finalscore: updateResult.rows[0].finalscore,
+        analysis_length: updateResult.rows[0].analysis_length
+      });
+
       return {
-        success: false,
-        error: `Cannot score assessment: ${unansweredQuestions.length} questions remain unanswered`,
+        success: true,
+        score: aiResponse.score,
+        analysis: aiResponse.analysis || undefined,
       };
-    }
-
-    // Prepare scoring data
-    const scoringData = prepareScoringData(assessmentData);
-    console.log('✅ Scoring data prepared');
-
-    // Try to call AI Engine
-    const aiResponse = await callAIEngine(scoringData);
-
-    let scoringResult: ScoringResult;
-
-    if (aiResponse.success && aiResponse.scoring) {
-      console.log('🎉 AI Engine scoring successful');
-      scoringResult = aiResponse.scoring;
     } else {
-      console.log('⚠️ AI Engine unavailable, using fallback algorithm');
-      scoringResult = calculateFallbackScore(assessmentData);
-    }
-
-    // Save scoring result to database
-    const updateQuery = `
-      UPDATE Assessment
-      SET 
-        status = 'scored',
-        finalscore = $1,
-        scoringdetails = $2,
-        scoreddate = NOW()
-      WHERE assessmentid = $3
-      RETURNING assessmentid, finalscore, status
-    `;
-
-    const updateResult = await pool.query(updateQuery, [
-      scoringResult.overall_score,
-      JSON.stringify(scoringResult),
-      assessmentid,
-    ]);
-
-    if (updateResult.rows.length === 0) {
+      console.error('❌ AI Engine failed:', aiResponse.error);
       return {
         success: false,
-        error: 'Failed to update assessment with scoring results',
+        error: aiResponse.error || 'Failed to get AI score',
       };
     }
-
-    console.log('✅ Assessment scoring saved to database');
-    console.log(`📊 Final Score: ${scoringResult.overall_score}/100`);
-
+  } catch (error) {
+    console.error('Error getting AI score:', error);
     return {
-      success: true,
-      scoring: scoringResult,
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error during AI scoring',
     };
+  }
+};
+
+/**
+ * Score an assessment using AI Engine
+ */
+export const scoreAssessment = async (assessmentid: number): Promise<{
+  success: boolean;
+  scoring?: ScoringResult;
+  error?: string;
+}> => {
+  try {
+    console.log(`\n🎯 Starting assessment scoring for ID: ${assessmentid}`);
+
+    // Use the working getAIScoreForAssessment function
+    const result = await getAIScoreForAssessment(assessmentid);
+    
+    if (result.success && result.score !== undefined) {
+      console.log('✅ Assessment scored successfully with score:', result.score);
+      
+      // Return in the expected format
+      return {
+        success: true,
+        scoring: {
+          individual_scores: {},
+          overall_score: result.score,
+          recommendations: [],
+          strengths: [],
+          weaknesses: [],
+          detailed_analysis: 'AI analysis completed'
+        }
+      };
+    } else {
+      console.error('❌ Scoring failed:', result.error);
+      return {
+        success: false,
+        error: result.error || 'Failed to score assessment',
+      };
+    }
   } catch (error) {
     console.error('Error scoring assessment:', error);
     return {

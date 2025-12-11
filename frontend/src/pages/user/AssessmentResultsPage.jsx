@@ -2,8 +2,7 @@ import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import Navbar from "../../components/Navbar";
 import { assessmentService } from "../../services/assessmentService";
-import jsPDF from "jspdf";
-import "jspdf-autotable";
+import jsPDF from "jspdf/dist/jspdf.es.min.js";
 
 export default function AssessmentResultsPage() {
   const { assessmentId } = useParams();

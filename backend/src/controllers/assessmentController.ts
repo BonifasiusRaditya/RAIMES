@@ -717,6 +717,8 @@ export const getMyAssessments = async (req: AuthRequest, res: Response): Promise
         ? Math.round((answeredCount / totalQuestions) * 100)
         : 0;
       
+      console.log(`🔍 getMyAssessments - Assessment ${row.assessmentid} finalscore:`, row.finalscore, 'Type:', typeof row.finalscore);
+      
       return {
         id: row.assessmentid,
         questionnaireId: row.questionnaireid,
@@ -728,9 +730,11 @@ export const getMyAssessments = async (req: AuthRequest, res: Response): Promise
         progressPercentage,
         answeredQuestions: answeredCount,
         totalQuestions,
-        finalScore: row.finalscore
+        finalScore: row.finalscore !== null ? parseFloat(row.finalscore) : null
       };
     });
+
+    console.log('📤 getMyAssessments sending:', assessmentsData.map((a: any) => ({ id: a.id, finalScore: a.finalScore })));
 
     res.status(200).json({
       success: true,
@@ -808,6 +812,9 @@ export const getMyAssessmentResults = async (req: AuthRequest, res: Response): P
         ? Math.round((answeredCount / totalQuestions) * 100)
         : 0;
 
+      // Log the raw finalscore from DB to debug
+      console.log(`🔍 Assessment ${row.assessmentid} - Raw finalscore from DB:`, row.finalscore, 'Type:', typeof row.finalscore);
+
       return {
         id: row.assessmentid,
         assessmentId: row.assessmentid,
@@ -820,10 +827,13 @@ export const getMyAssessmentResults = async (req: AuthRequest, res: Response): P
         progressPercentage,
         answeredQuestions: answeredCount,
         totalQuestions,
-        finalScore: row.finalscore,
+        finalScore: row.finalscore !== null ? parseFloat(row.finalscore) : null,
         completedAt: row.completiondate
       };
     });
+
+    console.log('📤 Sending getMyAssessmentResults response with', resultsData.length, 'assessments');
+    console.log('📊 Scores being sent:', resultsData.map((a: any) => ({ id: a.id, finalScore: a.finalScore })));
 
     res.status(200).json({
       success: true,
@@ -840,13 +850,17 @@ export const getMyAssessmentResults = async (req: AuthRequest, res: Response): P
   }
 };
 
-  // Get detailed assessment with all questions and answers
-  export const getAssessmentDetail = async (req: AuthRequest, res: Response): Promise<void> => {
-    try {
-      const { assessmentId } = req.params;
-      const userId = req.user?.userID;
+// Get detailed assessment with all questions and answers
+export const getAssessmentDetail = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { assessmentId } = req.params;
+    const userId = req.user?.userID;
+    const userRole = req.user?.role;
+
+    console.log('🔍 getAssessmentDetail called:', { assessmentId, userId, userRole });
 
       if (!userId || !assessmentId) {
+        console.log('❌ Missing required data:', { userId, assessmentId });
         res.status(400).json({
           success: false,
           message: 'Missing required data'
@@ -854,69 +868,75 @@ export const getMyAssessmentResults = async (req: AuthRequest, res: Response): P
         return;
       }
 
-      // Get user's company
-      const userCompanyQuery = `
-        SELECT c.companyid, c.companyname
-        FROM Company c
-        WHERE c.userid = $1
-      `;
-    
-      const userCompanyResult = await pool.query(userCompanyQuery, [userId]);
-    
-      if (userCompanyResult.rows.length === 0) {
-        res.status(404).json({
-          success: false,
-          message: 'No company associated with this user'
-        });
-        return;
-      }
-    
-      const companyId = userCompanyResult.rows[0].companyid;
-
-      // Get assessment details
+      // Get assessment details (admins/auditors can view any assessment)
       const assessmentQuery = `
         SELECT 
           a.assessmentid,
           a.questionnaireid,
+          a.companyid,
           a.status,
           a.startdate,
           a.completiondate,
           a.finalscore,
+          a.aianalysis,
+          a.reviewernotes,
+          a.questionreviewernotes,
           c.companyname,
           q.title as questionnaire_title,
           q.description as questionnaire_description
         FROM Assessment a
         LEFT JOIN Company c ON a.companyid = c.companyid
         LEFT JOIN Questionnaire q ON a.questionnaireid = q.questionnaireid
-        WHERE a.assessmentid = $1 AND a.companyid = $2
+        WHERE a.assessmentid = $1
       `;
     
-      const assessmentResult = await pool.query(assessmentQuery, [parseInt(assessmentId), companyId]);
+      const assessmentResult = await pool.query(assessmentQuery, [parseInt(assessmentId)]);
+
+      console.log('📊 Assessment query result:', assessmentResult.rows.length, 'rows');
 
       if (assessmentResult.rows.length === 0) {
+        console.log('❌ Assessment not found for ID:', assessmentId);
         res.status(404).json({
           success: false,
-          message: 'Assessment not found or access denied'
+          message: 'Assessment not found'
         });
         return;
       }
 
       const assessment = assessmentResult.rows[0];
+      console.log('✅ Assessment found:', { 
+        assessmentId: assessment.assessmentid, 
+        companyName: assessment.companyname,
+        questionnaireId: assessment.questionnaireid
+      });
+
+      // If user is not admin/auditor, verify they own this assessment
+      if (userRole !== 'admin' && userRole !== 'auditor') {
+        const userCompanyQuery = `SELECT companyid FROM Company WHERE userid = $1`;
+        const userCompanyResult = await pool.query(userCompanyQuery, [userId]);
+        
+        if (userCompanyResult.rows.length === 0 || 
+            userCompanyResult.rows[0].companyid !== assessment.companyid) {
+          res.status(403).json({
+            success: false,
+            message: 'Access denied'
+          });
+          return;
+        }
+      }
 
       // Get all questions and answers for this assessment
       const questionsQuery = `
         SELECT 
           q.questionid,
-          q.questiontext,
+          q.text as questiontext,
           q.category,
-          q.questiontype,
+          q.type as questiontype,
           q.options,
           q.weight,
-          q.evidencerequired,
+          q.require_evidence as evidencerequired,
           a.answerid,
-          a.response,
-          a.evidencepath,
-          a.score
+          a.response
         FROM Question q
         LEFT JOIN Answer a ON q.questionid = a.questionid AND a.assessmentid = $1
         WHERE q.questionnaireid = $2
@@ -928,11 +948,11 @@ export const getMyAssessmentResults = async (req: AuthRequest, res: Response): P
         assessment.questionnaireid
       ]);
 
+      console.log('📝 Questions query result:', questionsResult.rows.length, 'questions');
+
       // Group questions by category
       const questionsByCategory: Record<string, any[]> = {};
       let totalAnswered = 0;
-      let totalScore = 0;
-      let maxScore = 0;
 
       questionsResult.rows.forEach((row: any) => {
         const category = row.category || 'General';
@@ -949,19 +969,12 @@ export const getMyAssessmentResults = async (req: AuthRequest, res: Response): P
           weight: row.weight,
           evidenceRequired: row.evidencerequired,
           answer: row.response,
-          evidencePath: row.evidencepath,
-          score: row.score,
           answered: !!row.answerid
         });
 
         if (row.answerid) {
           totalAnswered++;
-          if (row.score !== null) {
-            totalScore += parseFloat(row.score);
-          }
         }
-      
-        maxScore += parseInt(row.weight) || 10;
       });
 
       // Calculate progress
@@ -969,6 +982,13 @@ export const getMyAssessmentResults = async (req: AuthRequest, res: Response): P
       const progressPercentage = totalQuestions > 0 
         ? Math.round((totalAnswered / totalQuestions) * 100)
         : 0;
+
+      console.log('✅ Sending response with', Object.keys(questionsByCategory).length, 'categories,', totalQuestions, 'questions,', totalAnswered, 'answered');
+      console.log('📊 AI Analysis status:', {
+        hasAiAnalysis: !!assessment.aianalysis,
+        analysisLength: assessment.aianalysis?.length || 0,
+        analysisPreview: assessment.aianalysis?.substring(0, 100)
+      });
 
       res.status(200).json({
         success: true,
@@ -982,10 +1002,12 @@ export const getMyAssessmentResults = async (req: AuthRequest, res: Response): P
           startDate: assessment.startdate,
           completionDate: assessment.completiondate,
           finalScore: assessment.finalscore,
+          aiAnalysis: assessment.aianalysis || null,
+          reviewerNotes: assessment.reviewernotes || null,
+          questionReviewerNotes: assessment.questionreviewernotes || null,
           progressPercentage,
           totalQuestions,
           answeredQuestions: totalAnswered,
-          calculatedScore: maxScore > 0 ? Math.round((totalScore / maxScore) * 100) : 0,
           questionsByCategory
         }
       });
@@ -1234,7 +1256,8 @@ export const completeAssessment = async (req: AuthRequest, res: Response): Promi
 
     console.log('🎯 Final score calculated:', finalScore);
 
-    // Update assessment status and final score
+    // Update assessment status with initial calculated score
+    // (AI scoring will update this if successful)
     const updateQuery = `
       UPDATE Assessment 
       SET 
@@ -1245,16 +1268,45 @@ export const completeAssessment = async (req: AuthRequest, res: Response): Promi
       RETURNING *
     `;
 
-    console.log('💾 Updating assessment with:', { finalScore, assessmentId });
+    console.log('💾 Updating assessment with initial score:', { finalScore, assessmentId });
     const updateResult = await pool.query(updateQuery, [finalScore, assessmentId]);
-    const updatedAssessment = updateResult.rows[0];
+    let updatedAssessment = updateResult.rows[0];
 
-    console.log('✅ Assessment completed successfully:', {
+    console.log('✅ Assessment marked as completed:', {
       assessmentId,
-      finalScore,
-      status: 'completed',
-      updatedAssessment
+      initialScore: finalScore,
+      status: 'completed'
     });
+
+    // Trigger AI scoring - this will overwrite the finalscore if successful
+    console.log('🤖 Triggering AI scoring...');
+    
+    try {
+      const aiScoringModule = await import('../ai_service/ai_scoring.js');
+      console.log('📦 AI scoring module imported successfully');
+      
+      const aiScoreResult = await aiScoringModule.getAIScoreForAssessment(assessmentId);
+      console.log('🎯 AI scoring result:', aiScoreResult);
+      
+      if (aiScoreResult.success && aiScoreResult.score !== undefined) {
+        console.log('✅ AI scoring completed successfully, score:', aiScoreResult.score);
+        
+        // Fetch the updated assessment with AI score
+        const refreshQuery = `SELECT * FROM Assessment WHERE assessmentid = $1`;
+        const refreshResult = await pool.query(refreshQuery, [assessmentId]);
+        updatedAssessment = refreshResult.rows[0];
+        
+        console.log('✅ Assessment updated with AI score:', updatedAssessment.finalscore);
+      } else {
+        console.warn('⚠️ AI scoring failed, keeping calculated score:', aiScoreResult.error);
+      }
+    } catch (scoringError) {
+      console.error('❌ Error during AI scoring:', scoringError);
+      console.error('Stack trace:', scoringError instanceof Error ? scoringError.stack : 'No stack');
+      // Continue with calculated score if AI scoring fails
+    }
+
+    console.log('📤 Sending response with final score:', updatedAssessment.finalscore);
 
     res.status(200).json({
       success: true,
@@ -1456,6 +1508,64 @@ export const getAssessmentScoringResult = async (req: AuthRequest, res: Response
     res.status(500).json({
       success: false,
       message: 'Error retrieving scoring result',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+};
+
+// Save reviewer notes for an assessment
+export const saveReviewerNotes = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { assessmentId } = req.params;
+    const { reviewerNotes, questionReviewerNotes } = req.body;
+    const userId = req.user?.userID;
+
+    if (!userId || !assessmentId) {
+      res.status(400).json({
+        success: false,
+        message: 'Missing required data'
+      });
+      return;
+    }
+
+    // Update reviewer notes (both overall and per-question)
+    const updateQuery = `
+      UPDATE Assessment
+      SET reviewernotes = $1,
+          questionreviewernotes = $2
+      WHERE assessmentid = $3
+      RETURNING assessmentid, reviewernotes, questionreviewernotes
+    `;
+
+    const result = await pool.query(updateQuery, [
+      reviewerNotes || null, 
+      questionReviewerNotes ? JSON.stringify(questionReviewerNotes) : null,
+      parseInt(assessmentId)
+    ]);
+
+    if (result.rows.length === 0) {
+      res.status(404).json({
+        success: false,
+        message: 'Assessment not found'
+      });
+      return;
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Reviewer notes saved successfully',
+      data: {
+        assessmentId: result.rows[0].assessmentid,
+        reviewerNotes: result.rows[0].reviewernotes,
+        questionReviewerNotes: result.rows[0].questionreviewernotes
+      }
+    });
+
+  } catch (error) {
+    console.error('Error saving reviewer notes:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error saving reviewer notes',
       error: error instanceof Error ? error.message : 'Unknown error'
     });
   }

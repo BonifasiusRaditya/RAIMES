@@ -2,8 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Navbar from "../../components/Navbar";
 import { assessmentService } from "../../services/assessmentService";
-import jsPDF from "jspdf";
-import "jspdf-autotable";
+import jsPDF from "jspdf/dist/jspdf.es.min.js";
 
 export default function ResultsPage() {
   const navigate = useNavigate();
@@ -22,17 +21,29 @@ export default function ResultsPage() {
 
       // Fetch user's completed assessments
       const response = await assessmentService.getMyAssessments();
+      console.log("📊 Raw assessment data from API:", response);
 
       if (response?.success && Array.isArray(response.data)) {
         // Filter only completed assessments
         const completedAssessments = response.data.filter(
-          (a) => a.status === "completed" && a.finalScore !== null
+          (a) => a.status === "completed" || a.status === "scored"
         );
+
+        console.log("✅ Completed assessments:", completedAssessments);
 
         // Map to results format
         const mappedResults = completedAssessments.map((a) => {
-          const rawScore = Number(a.finalScore ?? a.calculatedScore ?? 0);
-          const score = Number.isFinite(rawScore) ? rawScore : 0;
+          // Use finalScore directly (this is the AI score from backend)
+          const rawScore = a.finalScore;
+          console.log(`🔍 Mapping assessment ${a.id}:`, {
+            rawScore,
+            type: typeof rawScore,
+            isNull: rawScore === null,
+            isUndefined: rawScore === undefined
+          });
+          
+          // If finalScore is null/undefined, it means AI scoring hasn't completed yet
+          const score = rawScore !== null && rawScore !== undefined ? Number(rawScore) : null;
           const answeredQuestions = Number(a.answeredQuestions ?? 0);
           const totalQuestions = Number(a.totalQuestions ?? 0);
           const rawProgress = Number(a.progressPercentage);
@@ -42,21 +53,25 @@ export default function ResultsPage() {
             ? Math.round((answeredQuestions / totalQuestions) * 100)
             : 100;
 
-          return {
+          const result = {
             id: a.id,
             assessmentId: a.id,
             questionnaireId: a.questionnaireId,
             title: a.questionnaireTitle || `Assessment ${a.questionnaireId}`,
             completedAt: a.completedAt || a.completionDate || a.startDate,
-            score,
-            grade: calculateGrade(score),
+            score: score !== null && Number.isFinite(score) ? score : null,
+            grade: score !== null ? calculateGrade(score) : null,
             category: a.questionnaireDescription || "General Assessment",
             progressPercentage,
             answeredQuestions,
             totalQuestions,
           };
+
+          console.log(`✅ Mapped assessment ${a.id} result:`, { score: result.score, grade: result.grade });
+          return result;
         });
 
+        console.log("🎯 Final mapped results:", mappedResults);
         setResults(mappedResults);
       } else {
         setResults([]);
@@ -297,20 +312,20 @@ export default function ResultsPage() {
           <div className="bg-white rounded-lg shadow-sm p-6">
             <div className="text-sm text-gray-500 mb-1">Average Score</div>
             <div className="text-3xl font-bold text-raimes-purple">
-              {results.length > 0
+              {results.length > 0 && results.some(r => r.score !== null)
                 ? (
-                    results.reduce((sum, r) => sum + r.score, 0) /
-                    results.length
+                    results.filter(r => r.score !== null).reduce((sum, r) => sum + r.score, 0) /
+                    results.filter(r => r.score !== null).length
                   ).toFixed(1)
-                : "0.0"}
+                : "N/A"}
             </div>
           </div>
           <div className="bg-white rounded-lg shadow-sm p-6">
             <div className="text-sm text-gray-500 mb-1">Highest Score</div>
             <div className="text-3xl font-bold text-green-600">
-              {results.length > 0
-                ? Math.max(...results.map((r) => r.score)).toFixed(1)
-                : "0.0"}
+              {results.length > 0 && results.some(r => r.score !== null)
+                ? Math.max(...results.filter(r => r.score !== null).map((r) => r.score)).toFixed(1)
+                : "N/A"}
             </div>
           </div>
           <div className="bg-white rounded-lg shadow-sm p-6">
@@ -346,9 +361,11 @@ export default function ResultsPage() {
                 <div className="flex items-center gap-3">
                   <div className="text-right">
                     <div className="text-3xl font-bold text-raimes-purple">
-                      {result.score.toFixed(1)}
+                      {result.score !== null ? result.score.toFixed(1) : "Pending"}
                     </div>
-                    <div className="text-sm text-gray-500">Score</div>
+                    <div className="text-sm text-gray-500">
+                      {result.score !== null ? "Score" : "AI Scoring"}
+                    </div>
                   </div>
                   {result.grade && (
                     <span
@@ -409,16 +426,20 @@ export default function ResultsPage() {
                     <div className="flex items-center mb-2">
                       <div className="flex-1 bg-gray-200 rounded-full h-3">
                         <div
-                          className="bg-raimes-purple h-3 rounded-full transition-all"
-                          style={{ width: `${result.score}%` }}
+                          className={`h-3 rounded-full transition-all ${
+                            result.score !== null ? 'bg-raimes-purple' : 'bg-gray-400'
+                          }`}
+                          style={{ width: `${result.score !== null ? result.score : 0}%` }}
                         ></div>
                       </div>
                       <span className="ml-3 text-sm font-medium text-gray-700">
-                        {result.score.toFixed(1)}%
+                        {result.score !== null ? `${result.score.toFixed(1)}%` : "Pending"}
                       </span>
                     </div>
                     <p className="text-xs text-gray-500">
-                      {result.score >= 90
+                      {result.score === null
+                        ? "AI scoring in progress..."
+                        : result.score >= 90
                         ? "Excellent performance"
                         : result.score >= 80
                         ? "Very good performance"

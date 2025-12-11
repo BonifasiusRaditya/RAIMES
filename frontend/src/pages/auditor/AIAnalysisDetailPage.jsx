@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import Navbar from "../../components/Navbar";
-import { api } from "../../services/api";
+import api from "../../services/api";
 
 export default function AIAnalysisDetailPage() {
   const { assessmentId } = useParams();

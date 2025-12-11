@@ -217,23 +217,19 @@ function Dashboard() {
                 </th>
                 <th className="px-6 py-4 text-left font-semibold">Questionnaire</th>
                 <th className="px-6 py-4 text-left font-semibold">Progress</th>
-                <th className="px-6 py-4 text-left font-semibold">Status</th>
                 <th className="px-6 py-4 text-left font-semibold">Score</th>
-                <th className="px-6 py-4 text-left font-semibold">Action</th>
+                <th className="px-6 py-4 text-left font-semibold">Detail</th>
               </tr>
             </thead>
             <tbody>
               {assessments.length === 0 ? (
                 <tr>
-                  <td colSpan="7" className="px-6 py-12 text-center text-gray-500">
+                  <td colSpan="6" className="px-6 py-12 text-center text-gray-500">
                     {loading ? 'Loading assessments...' : 'No assessments found'}
                   </td>
                 </tr>
               ) : (
                 assessments.map((assessment, index) => {
-                  const statusBadge = getStatusBadge(assessment.status);
-                  const actionBtn = getActionButton(assessment);
-                  
                   return (
                     <tr
                       key={assessment.assessmentId}
@@ -265,36 +261,16 @@ function Dashboard() {
                           {assessment.answeredQuestions}/{assessment.totalQuestions} answered
                         </div>
                       </td>
-                      <td className="px-6 py-4">
-                        <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${statusBadge.bg} ${statusBadge.text}`}>
-                          {statusBadge.label}
-                        </span>
-                      </td>
                       <td className="px-6 py-4 text-raimes-purple font-bold text-lg">
-                        {assessment.finalScore || '-'}
+                        {assessment.finalScore !== null && assessment.finalScore !== undefined ? assessment.finalScore : '-'}
                       </td>
                       <td className="px-6 py-4">
-                        {actionBtn.style === "yellow" && (
-                          <a 
-                            href="/data-validation"
-                            className="inline-block px-6 py-2 bg-raimes-yellow text-white font-semibold rounded-lg hover:opacity-90 transition-opacity"
-                          >
-                            {actionBtn.action}
-                          </a>
-                        )}
-                        {actionBtn.style === "yellow-outline" && (
-                          <a 
-                            href="/data-validation"
-                            className="inline-block px-6 py-2 border-2 border-raimes-yellow text-raimes-yellow font-semibold rounded-lg hover:bg-raimes-yellow hover:text-white transition-colors"
-                          >
-                            {actionBtn.action}
-                          </a>
-                        )}
-                        {actionBtn.style === "gray" && (
-                          <button className="px-6 py-2 bg-gray-400 text-white font-semibold rounded-lg cursor-not-allowed">
-                            {actionBtn.action}
-                          </button>
-                        )}
+                        <a 
+                          href={`/data-validation?assessmentId=${assessment.assessmentId}`}
+                          className="inline-block px-6 py-2 bg-raimes-purple text-white font-semibold rounded-lg hover:opacity-90 transition-opacity"
+                        >
+                          View Detail
+                        </a>
                       </td>
                     </tr>
                   );

@@ -183,6 +183,35 @@ export const assessmentService = {
     }
   },
 
+  // Request AI scoring for a completed assessment
+  requestAIScoring: async (assessmentId) => {
+    try {
+      console.log("🤖 Requesting AI scoring for assessment:", assessmentId);
+      const response = await api.post("/assessments/score", {
+        assessmentId: parseInt(assessmentId),
+      });
+      console.log("✅ AI scoring response:", response.data);
+      return response.data;
+    } catch (error) {
+      console.error("❌ Error requesting AI scoring:", error);
+      throw error;
+    }
+  },
+
+  // Get AI scoring result for an assessment
+  getAIScoringResult: async (assessmentId) => {
+    try {
+      console.log("📊 Getting AI scoring result for assessment:", assessmentId);
+      const response = await api.get(`/assessments/${assessmentId}/scoring`);
+      console.log("✅ AI scoring result:", response.data);
+      return response.data;
+    } catch (error) {
+      console.error("❌ Error getting AI scoring result:", error);
+      // Return null instead of throwing to allow fallback to finalScore
+      return null;
+    }
+  },
+
   // Get assessment results
   getAssessmentResults: async (assessmentId) => {
     try {
@@ -205,6 +234,22 @@ export const assessmentService = {
       console.error("❌ Error fetching assessment detail:", error);
       console.error("Error response:", error.response?.data);
       console.error("Error status:", error.response?.status);
+      throw error;
+    }
+  },
+
+  // Save reviewer notes for an assessment
+  saveReviewerNotes: async (assessmentId, reviewerNotes, questionReviewerNotes = {}) => {
+    try {
+      console.log('💾 Saving reviewer notes for assessment:', assessmentId);
+      const response = await api.put(`/assessments/${assessmentId}/reviewer-notes`, {
+        reviewerNotes,
+        questionReviewerNotes
+      });
+      console.log('✅ Reviewer notes saved:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error("❌ Error saving reviewer notes:", error);
       throw error;
     }
   },

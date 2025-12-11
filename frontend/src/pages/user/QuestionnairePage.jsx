@@ -364,7 +364,7 @@ function QuestionnairePage() {
       if (response.success) {
         setNotification({
           show: true,
-          message: `Assessment completed successfully! Score: ${response.data.finalScore}%. Redirecting...`,
+          message: `Assessment completed successfully! Score: ${response.data.finalScore}. Redirecting...`,
           type: "success",
         });
         setTimeout(() => {

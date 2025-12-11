@@ -12,7 +12,8 @@ import {
   completeAssessment,
   scoreAssessmentController,
   getAssessmentScoringResult,
-  getScoringStatistics
+  getScoringStatistics,
+  saveReviewerNotes
 } from '../controllers/assessmentController.js';
 import { authenticateToken } from '../middleware/auth.js';
 import multer from 'multer';
@@ -76,6 +77,7 @@ router.get('/:assessmentId/results', getAssessmentResults);
 
 // PUT routes
 router.put('/position/:questionnaireId', updateCurrentPosition);
+router.put('/:assessmentId/reviewer-notes', saveReviewerNotes);
 
 // Get scoring statistics for a questionnaire (generic, placed last to avoid conflicts)
 router.get('/statistics/:questionnaireId', getScoringStatistics);
