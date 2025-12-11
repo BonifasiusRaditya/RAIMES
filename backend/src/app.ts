@@ -1,6 +1,8 @@
 import express, { type Request, type Response } from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import fs from 'fs';
+import path from 'path';
 import authRoutes from './routes/authRoutes.js';
 import questionRoutes from './routes/questionRoutes.js';
 import questionnaireRoutes from './routes/questionnaireRoutes.js';
@@ -32,6 +34,11 @@ app.use(cors({
 console.log('🟢 Setelah CORS middleware');
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Serve uploaded evidence files
+const uploadsRoot = path.resolve(process.cwd(), 'uploads');
+fs.mkdirSync(uploadsRoot, { recursive: true });
+app.use('/uploads', express.static(uploadsRoot));
 
 // Routes
 app.get('/', (req: Request, res: Response) => {

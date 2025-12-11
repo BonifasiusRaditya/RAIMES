@@ -39,13 +39,12 @@ export const assessmentService = {
   },
 
   // Save progress when user answers a question (called on "Save & Continue")
-  saveProgress: async ({ assessmentId, questionId, answer, files = [] }) => {
+  saveProgress: async ({ assessmentId, questionId, answer }) => {
     try {
       const response = await api.post("/assessments/save-progress", {
         assessmentId: parseInt(assessmentId),
         questionId: parseInt(questionId),
         answer,
-        files,
       });
       return response.data;
     } catch (error) {
@@ -160,6 +159,19 @@ export const assessmentService = {
     }
   },
 
+  // Fetch evidence for an assessment (optionally per question)
+  getEvidence: async (assessmentId, questionId) => {
+    try {
+      const response = await api.get(`/assessments/${assessmentId}/evidence`, {
+        params: questionId ? { questionId } : {},
+      });
+      return response.data;
+    } catch (error) {
+      console.error("Error fetching evidence:", error);
+      throw error;
+    }
+  },
+
   // Complete assessment
   completeAssessment: async (questionnaireId) => {
     try {
@@ -226,9 +238,9 @@ export const assessmentService = {
   // Get assessment detail with questions and answers
   getAssessmentDetail: async (assessmentId) => {
     try {
-      console.log('📡 Fetching assessment detail for ID:', assessmentId);
+      console.log("📡 Fetching assessment detail for ID:", assessmentId);
       const response = await api.get(`/assessments/detail/${assessmentId}`);
-      console.log('✅ Assessment detail response:', response.data);
+      console.log("✅ Assessment detail response:", response.data);
       return response.data;
     } catch (error) {
       console.error("❌ Error fetching assessment detail:", error);
@@ -239,14 +251,21 @@ export const assessmentService = {
   },
 
   // Save reviewer notes for an assessment
-  saveReviewerNotes: async (assessmentId, reviewerNotes, questionReviewerNotes = {}) => {
+  saveReviewerNotes: async (
+    assessmentId,
+    reviewerNotes,
+    questionReviewerNotes = {}
+  ) => {
     try {
-      console.log('💾 Saving reviewer notes for assessment:', assessmentId);
-      const response = await api.put(`/assessments/${assessmentId}/reviewer-notes`, {
-        reviewerNotes,
-        questionReviewerNotes
-      });
-      console.log('✅ Reviewer notes saved:', response.data);
+      console.log("💾 Saving reviewer notes for assessment:", assessmentId);
+      const response = await api.put(
+        `/assessments/${assessmentId}/reviewer-notes`,
+        {
+          reviewerNotes,
+          questionReviewerNotes,
+        }
+      );
+      console.log("✅ Reviewer notes saved:", response.data);
       return response.data;
     } catch (error) {
       console.error("❌ Error saving reviewer notes:", error);

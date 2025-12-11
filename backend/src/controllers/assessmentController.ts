@@ -1,4 +1,5 @@
 import type { Request, Response } from 'express';
+import path from 'path';
 import pool from '../config/database.js';
 
 interface AuthRequest extends Request {
@@ -29,6 +30,38 @@ interface AnswerResult {
   questionid: number;
   response: string;
 }
+
+// Ensure the Evidence table exists before attempting to store files
+let evidenceTableEnsured = false;
+const ensureEvidenceTable = async (): Promise<void> => {
+  if (evidenceTableEnsured) return;
+
+  // Create table and add safety columns/indexes if they are missing
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS Evidence (
+      evidenceid SERIAL PRIMARY KEY,
+      answerid INTEGER NOT NULL,
+      filename VARCHAR(255) NOT NULL,
+      originalname VARCHAR(255),
+      filetype VARCHAR(128),
+      storagepath VARCHAR(1024) NOT NULL,
+      uploaddate TIMESTAMPTZ DEFAULT NOW(),
+      uploaderid INTEGER,
+      CONSTRAINT fk_evidence_answer FOREIGN KEY (answerid) REFERENCES Answer(answerid) ON DELETE CASCADE,
+      CONSTRAINT fk_evidence_user FOREIGN KEY (uploaderid) REFERENCES "User"(userid) ON DELETE SET NULL
+    );
+  `);
+
+  await pool.query('ALTER TABLE Evidence ADD COLUMN IF NOT EXISTS originalname VARCHAR(255);');
+  await pool.query('ALTER TABLE Evidence ADD COLUMN IF NOT EXISTS filetype VARCHAR(128);');
+  await pool.query('ALTER TABLE Evidence ADD COLUMN IF NOT EXISTS storagepath VARCHAR(1024);');
+  await pool.query('ALTER TABLE Evidence ADD COLUMN IF NOT EXISTS uploaddate TIMESTAMPTZ DEFAULT NOW();');
+  await pool.query('ALTER TABLE Evidence ADD COLUMN IF NOT EXISTS uploaderid INTEGER;');
+  await pool.query('CREATE INDEX IF NOT EXISTS idx_evidence_answerid ON Evidence(answerid);');
+  await pool.query('CREATE INDEX IF NOT EXISTS idx_evidence_uploaderid ON Evidence(uploaderid);');
+
+  evidenceTableEnsured = true;
+};
 
 // Start a new assessment
 export const startAssessment = async (req: AuthRequest, res: Response): Promise<void> => {
@@ -344,6 +377,251 @@ export const saveProgress = async (req: AuthRequest, res: Response): Promise<voi
     res.status(500).json({
       success: false,
       message: 'Error saving progress',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+};
+
+// Upload an evidence file for a specific question/assessment
+export const uploadEvidence = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const file = (req as any).file as Express.Multer.File | undefined;
+    const userId = req.user?.userID;
+    const userRole = req.user?.role;
+    const { assessmentId, questionId, answerId } = req.body;
+
+    if (!userId) {
+      res.status(401).json({ success: false, message: 'Unauthorized: missing user context' });
+      return;
+    }
+
+    if (!file) {
+      res.status(400).json({ success: false, message: 'Evidence file is required' });
+      return;
+    }
+
+    const assessmentIdNum = Number(assessmentId);
+    const questionIdNum = Number(questionId);
+    const answerIdNum = answerId ? Number(answerId) : null;
+
+    if (Number.isNaN(assessmentIdNum) || Number.isNaN(questionIdNum)) {
+      res.status(400).json({ success: false, message: 'assessmentId and questionId must be valid numbers' });
+      return;
+    }
+
+    await ensureEvidenceTable();
+
+    // Verify the assessment exists and belongs to the requesting user (unless admin/auditor)
+    const assessmentQuery = `SELECT assessmentid, companyid FROM Assessment WHERE assessmentid = $1`;
+    const assessmentResult = await pool.query(assessmentQuery, [assessmentIdNum]);
+
+    if (assessmentResult.rows.length === 0) {
+      res.status(404).json({ success: false, message: 'Assessment not found' });
+      return;
+    }
+
+    const assessmentCompanyId = assessmentResult.rows[0].companyid;
+
+    if (userRole !== 'admin' && userRole !== 'auditor') {
+      const companyLookup = await pool.query('SELECT companyid FROM Company WHERE userid = $1', [userId]);
+      const userCompanyId = companyLookup.rows[0]?.companyid;
+      if (!userCompanyId || userCompanyId !== assessmentCompanyId) {
+        res.status(403).json({ success: false, message: 'Access denied for this assessment' });
+        return;
+      }
+    }
+
+    // Resolve answerId: validate provided ID or create/find one for the assessment/question pair
+    let answerIdToUse: number | null = null;
+
+    if (answerIdNum && !Number.isNaN(answerIdNum)) {
+      const answerCheckQuery = `SELECT answerid, assessmentid, questionid FROM Answer WHERE answerid = $1`;
+      const answerCheck = await pool.query(answerCheckQuery, [answerIdNum]);
+
+      if (
+        answerCheck.rows.length === 0 ||
+        answerCheck.rows[0].assessmentid !== assessmentIdNum ||
+        answerCheck.rows[0].questionid !== questionIdNum
+      ) {
+        res.status(400).json({ success: false, message: 'Invalid answerId for this assessment/question' });
+        return;
+      }
+
+      answerIdToUse = answerCheck.rows[0].answerid;
+    } else {
+      const existingAnswerQuery = `SELECT answerid FROM Answer WHERE assessmentid = $1 AND questionid = $2`;
+      const existingAnswer = await pool.query(existingAnswerQuery, [assessmentIdNum, questionIdNum]);
+
+      if (existingAnswer.rows.length > 0) {
+        answerIdToUse = existingAnswer.rows[0].answerid;
+      } else {
+        const insertAnswerQuery = `
+          INSERT INTO Answer (assessmentid, questionid, response)
+          VALUES ($1, $2, '')
+          RETURNING answerid
+        `;
+        const insertedAnswer = await pool.query(insertAnswerQuery, [assessmentIdNum, questionIdNum]);
+        answerIdToUse = insertedAnswer.rows[0].answerid;
+      }
+    }
+
+    const storedFilename = file.filename;
+    const relativePath = path.join('uploads', 'evidence', storedFilename);
+    const insertEvidenceQuery = `
+      INSERT INTO Evidence (answerid, filename, originalname, filetype, storagepath, uploaderid)
+      VALUES ($1, $2, $3, $4, $5, $6)
+      RETURNING evidenceid, uploaddate
+    `;
+
+    const evidenceResult = await pool.query(insertEvidenceQuery, [
+      answerIdToUse,
+      storedFilename,
+      file.originalname,
+      file.mimetype,
+      relativePath,
+      userId
+    ]);
+
+    const evidenceRow = evidenceResult.rows[0];
+    const publicUrl = `${req.protocol}://${req.get('host')}/uploads/evidence/${storedFilename}`;
+
+    res.status(201).json({
+      success: true,
+      message: 'Evidence uploaded successfully',
+      data: {
+        id: evidenceRow.evidenceid,
+        answerId: answerIdToUse,
+        assessmentId: assessmentIdNum,
+        questionId: questionIdNum,
+        filename: file.originalname,
+        storedFilename,
+        mimeType: file.mimetype,
+        path: relativePath,
+        url: publicUrl,
+        uploadedAt: evidenceRow.uploaddate
+      }
+    });
+
+  } catch (error) {
+    console.error('Error uploading evidence:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error uploading evidence file',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+};
+
+// List all evidence files for an assessment (optionally filtered by question)
+export const getEvidenceForAssessment = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { assessmentId } = req.params;
+    const { questionId } = req.query;
+    const userId = req.user?.userID;
+    const userRole = req.user?.role;
+
+    if (!userId) {
+      res.status(401).json({ success: false, message: 'Unauthorized: missing user context' });
+      return;
+    }
+
+    const assessmentIdNum = Number(assessmentId);
+    if (Number.isNaN(assessmentIdNum)) {
+      res.status(400).json({ success: false, message: 'assessmentId must be a valid number' });
+      return;
+    }
+
+    await ensureEvidenceTable();
+
+    const assessmentQuery = `SELECT assessmentid, companyid FROM Assessment WHERE assessmentid = $1`;
+    const assessmentResult = await pool.query(assessmentQuery, [assessmentIdNum]);
+
+    if (assessmentResult.rows.length === 0) {
+      res.status(404).json({ success: false, message: 'Assessment not found' });
+      return;
+    }
+
+    const assessmentCompanyId = assessmentResult.rows[0].companyid;
+
+    if (userRole !== 'admin' && userRole !== 'auditor') {
+      const companyLookup = await pool.query('SELECT companyid FROM Company WHERE userid = $1', [userId]);
+      const userCompanyId = companyLookup.rows[0]?.companyid;
+      if (!userCompanyId || userCompanyId !== assessmentCompanyId) {
+        res.status(403).json({ success: false, message: 'Access denied for this assessment' });
+        return;
+      }
+    }
+
+    const params: Array<number> = [assessmentIdNum];
+    let whereClause = 'ans.assessmentid = $1';
+
+    if (questionId !== undefined) {
+      const questionIdNum = Number(questionId);
+      if (Number.isNaN(questionIdNum)) {
+        res.status(400).json({ success: false, message: 'questionId must be a valid number' });
+        return;
+      }
+      params.push(questionIdNum);
+      whereClause += ' AND ans.questionid = $2';
+    }
+
+    const evidenceQuery = `
+      SELECT 
+        e.evidenceid,
+        e.answerid,
+        e.filename,
+        e.originalname,
+        e.filetype,
+        e.storagepath,
+        e.uploaddate,
+        ans.questionid
+      FROM Evidence e
+      JOIN Answer ans ON e.answerid = ans.answerid
+      WHERE ${whereClause}
+      ORDER BY e.uploaddate DESC
+    `;
+
+    const evidenceResult = await pool.query(evidenceQuery, params);
+
+    const evidence = evidenceResult.rows.map((row: any) => {
+      const storedFilename = row.filename || path.basename(row.storagepath || '');
+      const relativePath = row.storagepath || path.join('uploads', 'evidence', storedFilename);
+      const publicUrl = `${req.protocol}://${req.get('host')}/uploads/evidence/${storedFilename}`;
+
+      return {
+        id: row.evidenceid,
+        answerId: row.answerid,
+        questionId: row.questionid,
+        filename: row.originalname || storedFilename,
+        storedFilename,
+        mimeType: row.filetype,
+        path: relativePath,
+        url: publicUrl,
+        uploadedAt: row.uploaddate
+      };
+    });
+
+    const byQuestion = evidence.reduce((acc: Record<number, any[]>, item) => {
+      const key = item.questionId;
+      acc[key] = acc[key] || [];
+      acc[key].push(item);
+      return acc;
+    }, {} as Record<number, any[]>);
+
+    res.status(200).json({
+      success: true,
+      message: 'Evidence fetched successfully',
+      data: {
+        evidence,
+        byQuestion
+      }
+    });
+
+  } catch (error) {
+    console.error('Error fetching evidence:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching evidence',
       error: error instanceof Error ? error.message : 'Unknown error'
     });
   }

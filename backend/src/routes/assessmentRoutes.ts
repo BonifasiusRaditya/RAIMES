@@ -13,7 +13,9 @@ import {
   scoreAssessmentController,
   getAssessmentScoringResult,
   getScoringStatistics,
-  saveReviewerNotes
+  saveReviewerNotes,
+  uploadEvidence,
+  getEvidenceForAssessment
 } from '../controllers/assessmentController.js';
 import { authenticateToken } from '../middleware/auth.js';
 import multer from 'multer';
@@ -57,6 +59,7 @@ router.post('/start', startAssessment);
 
 // POST routes
 router.post('/save-progress', saveProgress);
+router.post('/upload-evidence', evidenceUpload.single('evidence'), uploadEvidence);
 router.post('/complete', completeAssessment);
 router.post('/score', scoreAssessmentController);
 
@@ -70,6 +73,7 @@ router.get('/all', getAllAssessmentsWithProgress);
 // More specific GET routes with path segments
 router.get('/current/:questionnaireId', getCurrentAssessment);
 router.get('/detail/:assessmentId', getAssessmentDetail);
+router.get('/:assessmentId/evidence', getEvidenceForAssessment);
 
 // GET routes with nested paths (before generic /:id routes)
 router.get('/:assessmentId/scoring', getAssessmentScoringResult);

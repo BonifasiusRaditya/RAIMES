@@ -6,9 +6,9 @@ import { assessmentService } from "../../services/assessmentService";
 import { useAuth } from "../../context/AuthContext";
 
 function QuestionnairePage() {
-    // State for category pagination
-    const [categoryIndex, setCategoryIndex] = useState(0);
-    const [categories, setCategories] = useState([]);
+  // State for category pagination
+  const [categoryIndex, setCategoryIndex] = useState(0);
+  const [categories, setCategories] = useState([]);
 
   const { id: questionnaireId } = useParams();
   const navigate = useNavigate();
@@ -16,6 +16,7 @@ function QuestionnairePage() {
   const [questions, setQuestions] = useState([]);
   const [answers, setAnswers] = useState({});
   const [files, setFiles] = useState({});
+  const [evidenceByQuestion, setEvidenceByQuestion] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [questionnaire, setQuestionnaire] = useState(null);
@@ -44,6 +45,7 @@ function QuestionnairePage() {
     try {
       setLoading(true);
       setError("");
+      setEvidenceByQuestion({});
 
       console.log("🔍 User data:", user);
       console.log("📋 Starting assessment for questionnaire:", questionnaireId);
@@ -84,6 +86,7 @@ function QuestionnairePage() {
         assessmentData.assessmentId || assessmentData.id;
       setAssessmentId(assessmentIdValue);
       setProgressPercentage(assessmentData.progressPercentage || 0);
+      await fetchEvidenceForAssessment(assessmentIdValue);
       const existingAnswerMap =
         assessmentData.answers || assessmentData.answerMap || {};
       console.log("🎯 Assessment data:", {
@@ -101,16 +104,18 @@ function QuestionnairePage() {
       );
 
       // Debug: log received questions
-      console.log('Received questions:', response.data?.length);
+      console.log("Received questions:", response.data?.length);
       if (response.data?.length > 0) {
-        console.log('First question:', response.data[0]);
-        console.log('First question options:', response.data[0].options);
+        console.log("First question:", response.data[0]);
+        console.log("First question options:", response.data[0].options);
       }
 
       if (response.success && response.data) {
         setQuestions(response.data);
         // Extract unique categories from questions
-        const uniqueCategories = Array.from(new Set(response.data.map(q => q.category)));
+        const uniqueCategories = Array.from(
+          new Set(response.data.map((q) => q.category))
+        );
         setCategories(uniqueCategories);
         setCategoryIndex(0);
         setQuestionnaire({
@@ -171,6 +176,59 @@ function QuestionnairePage() {
     }
   };
 
+  const fetchEvidenceForAssessment = async (assessmentIdValue) => {
+    if (!assessmentIdValue) return;
+    try {
+      const evidenceResponse = await assessmentService.getEvidence(
+        assessmentIdValue
+      );
+      if (evidenceResponse?.success) {
+        setEvidenceByQuestion(evidenceResponse.data?.byQuestion || {});
+      }
+    } catch (err) {
+      console.error("Error fetching evidence:", err);
+    }
+  };
+
+  const uploadEvidenceForQuestion = async ({
+    assessmentIdValue,
+    questionIdValue,
+    answerIdValue,
+    pendingFiles = [],
+  }) => {
+    if (!pendingFiles.length) return [];
+
+    const uploadedItems = [];
+
+    for (const file of pendingFiles) {
+      const uploadResponse = await assessmentService.uploadEvidence(
+        assessmentIdValue,
+        questionIdValue,
+        file,
+        answerIdValue
+      );
+
+      if (uploadResponse?.success && uploadResponse.data) {
+        uploadedItems.push(uploadResponse.data);
+      }
+    }
+
+    if (uploadedItems.length > 0) {
+      setEvidenceByQuestion((prev) => ({
+        ...prev,
+        [questionIdValue]: [...(prev[questionIdValue] || []), ...uploadedItems],
+      }));
+    }
+
+    // Clear local pending files after successful upload
+    setFiles((prev) => ({
+      ...prev,
+      [questionIdValue]: [],
+    }));
+
+    return uploadedItems;
+  };
+
   const handleAnswerChange = (questionId, answer) => {
     setAnswers((prev) => {
       const newAnswers = {
@@ -223,12 +281,27 @@ function QuestionnairePage() {
       const answerToPersist = answers[questionId] || "";
       const filesToSave = files[questionId] || [];
 
-      await assessmentService.saveProgress({
+      const saveResponse = await assessmentService.saveProgress({
         assessmentId: effectiveAssessmentId,
         questionId: questionId,
-        answer: typeof answerToPersist === "string" ? answerToPersist : answerToPersist.toString(),
-        files: filesToSave,
+        answer:
+          typeof answerToPersist === "string"
+            ? answerToPersist
+            : answerToPersist.toString(),
       });
+
+      const savedAnswerId =
+        saveResponse?.data?.answerId ?? saveResponse?.answerId ?? null;
+
+      if (filesToSave.length > 0) {
+        await uploadEvidenceForQuestion({
+          assessmentIdValue: effectiveAssessmentId,
+          questionIdValue: questionId,
+          answerIdValue: savedAnswerId,
+          pendingFiles: filesToSave,
+        });
+        await fetchEvidenceForAssessment(effectiveAssessmentId);
+      }
 
       setNotification({
         show: true,
@@ -265,7 +338,9 @@ function QuestionnairePage() {
           typeof rawAnswerValue === "number"
             ? !Number.isNaN(rawAnswerValue)
             : (rawAnswerValue ?? "").toString().trim().length > 0;
-        const hasFiles = files[qId]?.length > 0;
+        const hasFiles =
+          (files[qId]?.length || 0) > 0 ||
+          (evidenceByQuestion[qId]?.length || 0) > 0;
         return !hasAnswer && !hasFiles;
       });
 
@@ -320,9 +395,7 @@ function QuestionnairePage() {
           }
 
           const preSubmitRawAnswer =
-            answers[normalizedQuestionId] ??
-            answers[questionIdValue] ??
-            "";
+            answers[normalizedQuestionId] ?? answers[questionIdValue] ?? "";
           const preSubmitAnswer =
             typeof preSubmitRawAnswer === "string"
               ? preSubmitRawAnswer
@@ -330,14 +403,29 @@ function QuestionnairePage() {
               ? preSubmitRawAnswer.toString()
               : "";
 
-          await assessmentService.saveProgress({
+          const saveResponse = await assessmentService.saveProgress({
             assessmentId: effectiveAssessmentId,
             questionId: normalizedQuestionId,
             answer: preSubmitAnswer,
-            files:
-              files[normalizedQuestionId] || files[questionIdValue] || [],
           });
+
+          const pendingFiles =
+            files[normalizedQuestionId] || files[questionIdValue] || [];
+
+          if (pendingFiles.length > 0) {
+            const savedAnswerId =
+              saveResponse?.data?.answerId ?? saveResponse?.answerId ?? null;
+
+            await uploadEvidenceForQuestion({
+              assessmentIdValue: effectiveAssessmentId,
+              questionIdValue: normalizedQuestionId,
+              answerIdValue: savedAnswerId,
+              pendingFiles,
+            });
+          }
         }
+
+        await fetchEvidenceForAssessment(effectiveAssessmentId);
       } catch (saveError) {
         console.error("❌ Error saving answers before submission:", saveError);
         setNotification({
@@ -619,14 +707,22 @@ function QuestionnairePage() {
                   <button
                     disabled={categoryIndex === 0}
                     onClick={() => setCategoryIndex((i) => i - 1)}
-                    className={`px-4 py-2 rounded-lg font-medium ${categoryIndex === 0 ? "bg-gray-200 text-gray-400 cursor-not-allowed" : "bg-raimes-purple text-white hover:opacity-90"}`}
+                    className={`px-4 py-2 rounded-lg font-medium ${
+                      categoryIndex === 0
+                        ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+                        : "bg-raimes-purple text-white hover:opacity-90"
+                    }`}
                   >
                     Previous
                   </button>
                   <button
                     disabled={categoryIndex === categories.length - 1}
                     onClick={() => setCategoryIndex((i) => i + 1)}
-                    className={`px-4 py-2 rounded-lg font-medium ${categoryIndex === categories.length - 1 ? "bg-gray-200 text-gray-400 cursor-not-allowed" : "bg-raimes-purple text-white hover:opacity-90"}`}
+                    className={`px-4 py-2 rounded-lg font-medium ${
+                      categoryIndex === categories.length - 1
+                        ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+                        : "bg-raimes-purple text-white hover:opacity-90"
+                    }`}
                   >
                     Next
                   </button>
@@ -636,10 +732,14 @@ function QuestionnairePage() {
                 {questions
                   .filter((q) => q.category === categories[categoryIndex])
                   .map((question, index) => {
-                    const questionId = question.questionID || question.questionid || question.id;
+                    const questionId =
+                      question.questionID || question.questionid || question.id;
                     const questionOptions = question.options || {};
                     return (
-                      <div key={`question-${questionId}`} className="border-2 border-gray-200 rounded-lg p-6 hover:border-raimes-purple transition-all">
+                      <div
+                        key={`question-${questionId}`}
+                        className="border-2 border-gray-200 rounded-lg p-6 hover:border-raimes-purple transition-all"
+                      >
                         {/* Question Header */}
                         <div className="mb-6 pb-4 border-b border-gray-200">
                           <div className="flex items-start justify-between mb-3">
@@ -655,23 +755,65 @@ function QuestionnairePage() {
                           </p>
                           <div className="mt-3 flex flex-wrap gap-3 text-xs text-gray-500">
                             <span className="flex items-center gap-1">
-                              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                                <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z"/>
-                                <path fillRule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clipRule="evenodd"/>
+                              <svg
+                                className="w-4 h-4"
+                                fill="currentColor"
+                                viewBox="0 0 20 20"
+                              >
+                                <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" />
+                                <path
+                                  fillRule="evenodd"
+                                  d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z"
+                                  clipRule="evenodd"
+                                />
                               </svg>
                               Type: {question.type}
                             </span>
                             <span className="flex items-center gap-1">
-                              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                                <path fillRule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clipRule="evenodd"/>
+                              <svg
+                                className="w-4 h-4"
+                                fill="currentColor"
+                                viewBox="0 0 20 20"
+                              >
+                                <path
+                                  fillRule="evenodd"
+                                  d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z"
+                                  clipRule="evenodd"
+                                />
                               </svg>
                               Weight: {question.weight}/10
                             </span>
                             <span className="flex items-center gap-1">
                               {question.require_evidence ? (
-                                <><svg className="w-4 h-4 text-red-500" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd"/></svg> Evidence Required</>
+                                <>
+                                  <svg
+                                    className="w-4 h-4 text-red-500"
+                                    fill="currentColor"
+                                    viewBox="0 0 20 20"
+                                  >
+                                    <path
+                                      fillRule="evenodd"
+                                      d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                                      clipRule="evenodd"
+                                    />
+                                  </svg>{" "}
+                                  Evidence Required
+                                </>
                               ) : (
-                                <><svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/></svg> Evidence Optional</>
+                                <>
+                                  <svg
+                                    className="w-4 h-4"
+                                    fill="currentColor"
+                                    viewBox="0 0 20 20"
+                                  >
+                                    <path
+                                      fillRule="evenodd"
+                                      d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                                      clipRule="evenodd"
+                                    />
+                                  </svg>{" "}
+                                  Evidence Optional
+                                </>
                               )}
                             </span>
                           </div>
@@ -686,19 +828,32 @@ function QuestionnairePage() {
                               <>
                                 <textarea
                                   value={answers[questionId] || ""}
-                                  onChange={(e) => handleAnswerChange(questionId, e.target.value)}
+                                  onChange={(e) =>
+                                    handleAnswerChange(
+                                      questionId,
+                                      e.target.value
+                                    )
+                                  }
                                   placeholder="Please provide a detailed answer..."
                                   className="w-full h-48 p-4 border-2 border-gray-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-raimes-purple focus:border-raimes-purple placeholder-gray-400"
                                 />
                                 <div className="mt-2 text-sm text-gray-500">
-                                  {(answers[questionId] || "").length}/1000 characters
+                                  {(answers[questionId] || "").length}/1000
+                                  characters
                                 </div>
                               </>
                             )}
                             {question.type === "multiple_choice" && (
                               <div className="space-y-3">
-                                {["option_a", "option_b", "option_c", "option_d", "option_e"].map((optionKey) => {
-                                  const optionValue = questionOptions[optionKey];
+                                {[
+                                  "option_a",
+                                  "option_b",
+                                  "option_c",
+                                  "option_d",
+                                  "option_e",
+                                ].map((optionKey) => {
+                                  const optionValue =
+                                    questionOptions[optionKey];
                                   if (!optionValue) return null;
                                   return (
                                     <label
@@ -709,8 +864,16 @@ function QuestionnairePage() {
                                         type="radio"
                                         name={`question_${questionId}`}
                                         value={optionValue}
-                                        checked={String(answers[questionId]) === String(optionValue)}
-                                        onChange={(e) => handleAnswerChange(questionId, e.target.value)}
+                                        checked={
+                                          String(answers[questionId]) ===
+                                          String(optionValue)
+                                        }
+                                        onChange={(e) =>
+                                          handleAnswerChange(
+                                            questionId,
+                                            e.target.value
+                                          )
+                                        }
                                         className="mt-1 h-4 w-4 text-raimes-purple focus:ring-raimes-purple"
                                       />
                                       <div className="flex-1">
@@ -727,8 +890,18 @@ function QuestionnairePage() {
                               onClick={() => handleSaveAnswer(questionId)}
                               className="mt-4 w-full px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition-colors flex items-center justify-center gap-2"
                             >
-                              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/>
+                              <svg
+                                className="w-5 h-5"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"
+                                />
                               </svg>
                               Save Answer
                             </button>
@@ -737,22 +910,46 @@ function QuestionnairePage() {
                           <div>
                             <label className="block text-sm font-semibold text-gray-700 mb-3">
                               Supporting Evidence
-                              {question.require_evidence && <span className="text-red-500 ml-1">*</span>}
-                              {!question.require_evidence && <span className="text-gray-400 ml-1">(Optional)</span>}
+                              {question.require_evidence && (
+                                <span className="text-red-500 ml-1">*</span>
+                              )}
+                              {!question.require_evidence && (
+                                <span className="text-gray-400 ml-1">
+                                  (Optional)
+                                </span>
+                              )}
                             </label>
                             <div
                               onDrop={(e) => handleDrop(e, questionId)}
                               onDragOver={handleDragOver}
                               className="h-48 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:border-raimes-purple hover:bg-purple-50 transition-colors"
-                              onClick={() => document.getElementById(`fileInput_${questionId}`).click()}
+                              onClick={() =>
+                                document
+                                  .getElementById(`fileInput_${questionId}`)
+                                  .click()
+                              }
                             >
                               <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mb-3">
-                                <svg className="w-8 h-8 text-raimes-purple" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+                                <svg
+                                  className="w-8 h-8 text-raimes-purple"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+                                  />
                                 </svg>
                               </div>
-                              <p className="text-sm text-gray-600 mb-1">Drop files here or click to upload</p>
-                              <p className="text-xs text-gray-400">PDF, DOC, DOCX, or images (max 10MB)</p>
+                              <p className="text-sm text-gray-600 mb-1">
+                                Drop files here or click to upload
+                              </p>
+                              <p className="text-xs text-gray-400">
+                                PDF, DOC, DOCX, or images (max 10MB)
+                              </p>
                             </div>
                             <input
                               id={`fileInput_${questionId}`}
@@ -764,27 +961,77 @@ function QuestionnairePage() {
                             />
                             {files[questionId]?.length > 0 && (
                               <div className="mt-3 space-y-2">
-                                <p className="text-xs font-medium text-gray-600">Uploaded Files:</p>
+                                <p className="text-xs font-medium text-gray-600">
+                                  Files ready to upload:
+                                </p>
                                 <ul className="space-y-1">
                                   {files[questionId].map((file, idx) => (
-                                    <li key={idx} className="flex items-center justify-between text-sm bg-gray-50 px-3 py-2 rounded">
-                                      <span className="text-gray-700 truncate">{file.name}</span>
+                                    <li
+                                      key={idx}
+                                      className="flex items-center justify-between text-sm bg-gray-50 px-3 py-2 rounded"
+                                    >
+                                      <span className="text-gray-700 truncate">
+                                        {file.name}
+                                      </span>
                                       <button
                                         onClick={(e) => {
                                           e.stopPropagation();
-                                          setFiles(prev => ({
+                                          setFiles((prev) => ({
                                             ...prev,
-                                            [questionId]: prev[questionId].filter((_, i) => i !== idx)
+                                            [questionId]: prev[
+                                              questionId
+                                            ].filter((_, i) => i !== idx),
                                           }));
                                         }}
                                         className="text-red-500 hover:text-red-700 ml-2"
                                       >
-                                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                                          <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd"/>
+                                        <svg
+                                          className="w-4 h-4"
+                                          fill="currentColor"
+                                          viewBox="0 0 20 20"
+                                        >
+                                          <path
+                                            fillRule="evenodd"
+                                            d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                                            clipRule="evenodd"
+                                          />
                                         </svg>
                                       </button>
                                     </li>
                                   ))}
+                                </ul>
+                              </div>
+                            )}
+                            {evidenceByQuestion[questionId]?.length > 0 && (
+                              <div className="mt-3 space-y-2">
+                                <p className="text-xs font-medium text-gray-600">
+                                  Saved Evidence:
+                                </p>
+                                <ul className="space-y-1">
+                                  {evidenceByQuestion[questionId].map(
+                                    (item) => (
+                                      <li
+                                        key={item.id}
+                                        className="flex items-center justify-between text-sm bg-green-50 px-3 py-2 rounded"
+                                      >
+                                        <a
+                                          href={item.url}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="text-raimes-purple hover:underline truncate"
+                                        >
+                                          {item.filename}
+                                        </a>
+                                        <span className="text-xs text-gray-500 ml-2 whitespace-nowrap">
+                                          {item.uploadedAt
+                                            ? new Date(
+                                                item.uploadedAt
+                                              ).toLocaleString()
+                                            : ""}
+                                        </span>
+                                      </li>
+                                    )
+                                  )}
                                 </ul>
                               </div>
                             )}
@@ -800,8 +1047,12 @@ function QuestionnairePage() {
           {/* Progress Bar */}
           <div className="mt-8 mb-6">
             <div className="flex justify-between items-center mb-2">
-              <span className="text-sm font-medium text-gray-700">Overall Progress</span>
-              <span className="text-sm text-raimes-purple font-semibold">{progressPercentage}%</span>
+              <span className="text-sm font-medium text-gray-700">
+                Overall Progress
+              </span>
+              <span className="text-sm text-raimes-purple font-semibold">
+                {progressPercentage}%
+              </span>
             </div>
             <div className="w-full bg-gray-200 rounded-full h-3">
               <div
@@ -830,8 +1081,18 @@ function QuestionnairePage() {
               ) : (
                 <>
                   Complete Assessment
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                  <svg
+                    className="w-6 h-6"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                    />
                   </svg>
                 </>
               )}
@@ -861,14 +1122,17 @@ function QuestionnairePage() {
                 <div className="mt-1 text-sm text-blue-700">
                   <ul className="list-disc list-inside space-y-1">
                     <li>
-                      Provide detailed, specific answers based on your actual practices
+                      Provide detailed, specific answers based on your actual
+                      practices
                     </li>
                     <li>Upload relevant documents as evidence when required</li>
                     <li>
-                      Save your progress regularly. You can return later to complete the assessment
+                      Save your progress regularly. You can return later to
+                      complete the assessment
                     </li>
                     <li>
-                      All questions are displayed on this page - scroll through to see them all
+                      All questions are displayed on this page - scroll through
+                      to see them all
                     </li>
                   </ul>
                 </div>
