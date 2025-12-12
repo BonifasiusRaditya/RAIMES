@@ -10,7 +10,7 @@
 }
 
 body {
-  font-family: 'Poppins', 'Inter', system-ui, -apple-system, sans-serif;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
   background: var(--color-raimes-white);
   color: #0f172a;
 }

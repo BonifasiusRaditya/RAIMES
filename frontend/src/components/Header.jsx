@@ -74,7 +74,7 @@ export default function Header({ useRootAnchors = false } = {}) {
           <motion.div whileHover={{ y: -2 }} whileTap={{ scale: 0.98 }}>
             <Link
               to="/login"
-              className="px-6 py-2 bg-raimes-yellow text-blue font-semibold rounded-lg hover:opacity-90 transition-opacity"
+              className="px-6 py-2 bg-white text-raimes-purple font-semibold rounded-lg hover:bg-gray-50 transition-colors border border-white/20"
             >
               Login
             </Link>
