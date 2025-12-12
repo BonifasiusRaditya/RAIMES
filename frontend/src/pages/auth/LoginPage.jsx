@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import Header from "../../components/Header";
-import logoFull from "../../assets/logo-full.png";
 
 function LoginPage() {
   const [username, setUsername] = useState("");
@@ -39,44 +38,43 @@ function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col bg-slate-50">
       <Header />
-      <div className="relative flex-1 flex items-center justify-center p-8">
-        {/* Left side with back button - positioned absolutely */}
+      <div className="relative flex-1 flex items-center justify-center p-8 overflow-hidden">
+        {/* Decorative gradients */}
+        <div className="pointer-events-none absolute -top-24 -right-24 h-72 w-72 rounded-full bg-raimes-purple/10 blur-3xl"></div>
+        <div className="pointer-events-none absolute -bottom-24 -left-24 h-72 w-72 rounded-full bg-raimes-purple/10 blur-3xl"></div>
+
+        {/* Back button */}
         <div className="absolute left-8 top-8">
           <Link
             to="/"
-            className="inline-block px-6 py-3 bg-raimes-yellow text-black font-semibold rounded-lg hover:opacity-90 transition-opacity"
+            className="inline-block px-6 py-3 bg-raimes-purple text-white font-semibold rounded-lg hover:bg-indigo-900 transition-colors"
           >
             ← Back to Home
           </Link>
         </div>
 
         {/* Center login form */}
-        <div className="bg-white rounded-3xl shadow-lg w-full max-w-md overflow-hidden">
-          <div className="bg-raimes-purple px-8 py-6 rounded-br-[80px]">
-            <img
-              src={logoFull}
-              alt="Responsible AI Mining Evaluation System"
-              className="h-10"
-            />
+        <div className="relative w-full max-w-md bg-white/60 backdrop-blur-xl border border-raimes-purple/15 rounded-2xl shadow-lg p-8">
+          <div className="text-center mb-6">
+            <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-raimes-purple/10 mb-3 ring-1 ring-raimes-purple/20">
+              <svg className="h-6 w-6 text-raimes-purple" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 11c1.657 0 3-1.567 3-3.5S13.657 4 12 4 9 5.567 9 7.5 10.343 11 12 11zm0 2c-2.761 0-5 2.239-5 5v1h10v-1c0-2.761-2.239-5-5-5z" />
+              </svg>
+            </div>
+            <h1 className="text-2xl font-bold text-raimes-purple">Welcome to RAIMES</h1>
+            <p className="text-gray-600">Login with your company's account</p>
           </div>
 
-          <div className="px-12 py-10">
+          <div className="px-2 py-2">
             <div className="text-center mb-8">
-              <h1 className="text-3xl font-bold mb-2">
-                <span className="text-raimes-purple">Welcome to </span>
-                <span className="text-raimes-yellow">RAIMES!</span>
-              </h1>
-              <p className="text-gray-600">Login with your company's account</p>
+              {error && (
+                <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+                  <p className="text-red-600 text-sm">{error}</p>
+                </div>
+              )}
             </div>
-
-            {error && (
-              <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
-                <p className="text-red-600 text-sm">{error}</p>
-              </div>
-            )}
-
             <form onSubmit={handleSubmit}>
               <div className="mb-6">
                 <label
@@ -91,7 +89,7 @@ function LoginPage() {
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   placeholder="Enter your username"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-raimes-purple focus:border-transparent"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-raimes-purple focus:border-transparent bg-white/70"
                   required
                   disabled={loading}
                 />
@@ -111,7 +109,7 @@ function LoginPage() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="Enter your password"
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-raimes-purple focus:border-transparent"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-raimes-purple focus:border-transparent bg-white/70"
                     required
                     disabled={loading}
                   />
@@ -158,7 +156,7 @@ function LoginPage() {
                 </label>
                 <a
                   href="#"
-                  className="text-raimes-purple hover:text-raimes-yellow transition-colors"
+                  className="text-raimes-purple hover:opacity-80 transition-colors"
                 >
                   Forgot Password?
                 </a>
@@ -203,7 +201,7 @@ function LoginPage() {
               Don't have an account?{" "}
               <Link
                 to="/register"
-                className="text-raimes-yellow font-semibold hover:underline"
+                className="text-raimes-purple font-semibold hover:underline"
               >
                 Request an Account
               </Link>

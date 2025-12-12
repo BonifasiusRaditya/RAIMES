@@ -17,6 +17,7 @@ function AddAccountPage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState({ username: '', email: '', companyname: '' });
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -24,12 +25,17 @@ function AddAccountPage() {
       ...prev,
       [name]: value
     }));
+    // Clear field-specific error when user edits the field
+    if (fieldErrors[name]) {
+      setFieldErrors(prev => ({ ...prev, [name]: '' }));
+    }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     setSuccess('');
+    setFieldErrors({ username: '', email: '', companyname: '' });
 
     // Validation
     if (formData.password !== formData.confirmPassword) {
@@ -82,7 +88,41 @@ function AddAccountPage() {
       }
     } catch (err) {
       console.error('Registration request error:', err);
-      setError(err.response?.data?.message || 'Registration request failed. Please try again.');
+      // The axios interceptor returns a string message; handle both string and object
+      const isString = typeof err === 'string';
+      const status = isString ? undefined : err.response?.status;
+      const data = isString ? {} : (err.response?.data || {});
+      const baseMsg = isString ? err : (data.message || '');
+      const msg = String(baseMsg).toLowerCase();
+
+      // Map common duplicate/constraint errors to specific fields
+      const newFieldErrors = { username: '', email: '', companyname: '' };
+
+      // If backend returns structured errors
+      if (Array.isArray(data.errors)) {
+        data.errors.forEach((e) => {
+          const field = (e.field || '').toLowerCase();
+          const message = e.message || 'Invalid value';
+          if (field === 'email') newFieldErrors.email = message;
+          if (field === 'username') newFieldErrors.username = message;
+          if (field === 'companyname' || field === 'company_name') newFieldErrors.companyname = message;
+        });
+      }
+
+      // Heuristics based on status/message
+      if (status === 409 || /duplicate|already exists|unique constraint/.test(msg)) {
+        if (/email/.test(msg)) newFieldErrors.email = newFieldErrors.email || 'Email already exists';
+        if (/username|user name/.test(msg)) newFieldErrors.username = newFieldErrors.username || 'Username already exists';
+        if (/company/.test(msg)) newFieldErrors.companyname = newFieldErrors.companyname || 'Company name already exists';
+      }
+
+      // Apply field errors if any, else show generic error
+      if (newFieldErrors.email || newFieldErrors.username || newFieldErrors.companyname) {
+        setFieldErrors(newFieldErrors);
+        setError('Please fix the highlighted fields.');
+      } else {
+        setError(baseMsg || 'Registration request failed. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
@@ -164,11 +204,14 @@ function AddAccountPage() {
                     name="username"
                     type="text"
                     required
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-raimes-purple focus:border-transparent transition-all"
+                    className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 transition-all ${fieldErrors.username ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-raimes-purple focus:border-transparent'}`}
                     placeholder="Enter username"
                     value={formData.username}
                     onChange={handleChange}
                   />
+                  {fieldErrors.username && (
+                    <p className="mt-1 text-xs text-red-600">{fieldErrors.username}</p>
+                  )}
                 </div>
                 
                 <div>
@@ -180,11 +223,14 @@ function AddAccountPage() {
                     name="email"
                     type="email"
                     required
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-raimes-purple focus:border-transparent transition-all"
+                    className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 transition-all ${fieldErrors.email ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-raimes-purple focus:border-transparent'}`}
                     placeholder="user@example.com"
                     value={formData.email}
                     onChange={handleChange}
                   />
+                  {fieldErrors.email && (
+                    <p className="mt-1 text-xs text-red-600">{fieldErrors.email}</p>
+                  )}
                 </div>
 
                 <div className="md:col-span-2">
@@ -232,11 +278,14 @@ function AddAccountPage() {
                       name="companyname"
                       type="text"
                       required
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-raimes-purple focus:border-transparent transition-all"
+                      className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 transition-all ${fieldErrors.companyname ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-raimes-purple focus:border-transparent'}`}
                       placeholder="Enter company name"
                       value={formData.companyname}
                       onChange={handleChange}
                     />
+                    {fieldErrors.companyname && (
+                      <p className="mt-1 text-xs text-red-600">{fieldErrors.companyname}</p>
+                    )}
                   </div>
 
                   <div>

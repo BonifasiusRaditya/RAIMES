@@ -14,6 +14,7 @@ const RegisterRequestPage = () => {
     address: ''
   });
   const [error, setError] = useState('');
+  const [fieldErrors, setFieldErrors] = useState({ username: '', email: '', companyname: '' });
   const [loading, setLoading] = useState(false);
 
   const handleChange = (e) => {
@@ -22,11 +23,15 @@ const RegisterRequestPage = () => {
       ...prev,
       [name]: value
     }));
+    if (fieldErrors[name]) {
+      setFieldErrors(prev => ({ ...prev, [name]: '' }));
+    }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    setFieldErrors({ username: '', email: '', companyname: '' });
 
     // Validation
     if (formData.password !== formData.confirmPassword) {
@@ -72,20 +77,59 @@ const RegisterRequestPage = () => {
       }
     } catch (err) {
       console.error('Registration request error:', err);
-      setError(err.response?.data?.message || 'Registration request failed. Please try again.');
+      // Handle string message returned from axios interceptor
+      const isString = typeof err === 'string';
+      const status = isString ? undefined : err.response?.status;
+      const data = isString ? {} : (err.response?.data || {});
+      const baseMsg = isString ? err : (data.message || '');
+      const msg = String(baseMsg).toLowerCase();
+
+      const newFieldErrors = { username: '', email: '', companyname: '' };
+
+      if (Array.isArray(data.errors)) {
+        data.errors.forEach((e) => {
+          const field = (e.field || '').toLowerCase();
+          const message = e.message || 'Invalid value';
+          if (field === 'email') newFieldErrors.email = message;
+          if (field === 'username') newFieldErrors.username = message;
+          if (field === 'companyname' || field === 'company_name') newFieldErrors.companyname = message;
+        });
+      }
+
+      if (status === 409 || /duplicate|already exists|unique constraint|registered|taken/.test(msg)) {
+        if (/email/.test(msg)) newFieldErrors.email = newFieldErrors.email || 'Email already registered';
+        if (/username|user name/.test(msg)) newFieldErrors.username = newFieldErrors.username || 'Username already taken';
+        if (/company/.test(msg)) newFieldErrors.companyname = newFieldErrors.companyname || 'Company name already exists';
+      }
+
+      if (newFieldErrors.email || newFieldErrors.username || newFieldErrors.companyname) {
+        setFieldErrors(newFieldErrors);
+        setError('Please fix the highlighted fields.');
+      } else {
+        setError(baseMsg || 'Registration request failed. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8 bg-white p-8 rounded-xl shadow-lg">
-        <div>
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
+    <div className="relative min-h-screen bg-slate-50 py-12 px-4 sm:px-6 lg:px-8 flex items-center justify-center overflow-hidden">
+      {/* Decorative gradients */}
+      <div className="pointer-events-none absolute -top-24 -right-24 h-72 w-72 rounded-full bg-raimes-purple/10 blur-3xl"></div>
+      <div className="pointer-events-none absolute -bottom-24 -left-24 h-72 w-72 rounded-full bg-raimes-purple/10 blur-3xl"></div>
+
+      <div className="relative max-w-md w-full space-y-8 bg-white/60 backdrop-blur-xl p-8 rounded-2xl border border-raimes-purple/15 shadow-lg">
+        <div className="text-center">
+          <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-raimes-purple/10 mb-3 ring-1 ring-raimes-purple/20">
+            <svg className="h-6 w-6 text-raimes-purple" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+            </svg>
+          </div>
+          <h2 className="text-3xl font-bold text-raimes-purple">
             Request Account Registration
           </h2>
-          <p className="mt-2 text-center text-sm text-gray-600">
+          <p className="mt-2 text-sm text-gray-700">
             Your request will be reviewed by admin
           </p>
         </div>
@@ -105,6 +149,7 @@ const RegisterRequestPage = () => {
           )}
 
           <div className="space-y-4">
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-500">Account Details</h3>
             <div>
               <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
                 Username <span className="text-red-500">*</span>
@@ -114,11 +159,14 @@ const RegisterRequestPage = () => {
                 name="username"
                 type="text"
                 required
-                className="appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                className={`appearance-none relative block w-full px-3 py-2 border placeholder-gray-500 text-gray-900 rounded-lg focus:outline-none focus:ring-2 sm:text-sm bg-white/70 ${fieldErrors.username ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-raimes-purple focus:border-raimes-purple'}`}
                 placeholder="Enter your username"
                 value={formData.username}
                 onChange={handleChange}
               />
+              {fieldErrors.username && (
+                <p className="mt-1 text-xs text-red-600">{fieldErrors.username}</p>
+              )}
             </div>
             
             <div>
@@ -130,11 +178,14 @@ const RegisterRequestPage = () => {
                 name="email"
                 type="email"
                 required
-                className="appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                className={`appearance-none relative block w-full px-3 py-2 border placeholder-gray-500 text-gray-900 rounded-lg focus:outline-none focus:ring-2 sm:text-sm bg-white/70 ${fieldErrors.email ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-raimes-purple focus:border-raimes-purple'}`}
                 placeholder="Enter your email"
                 value={formData.email}
                 onChange={handleChange}
               />
+              {fieldErrors.email && (
+                <p className="mt-1 text-xs text-red-600">{fieldErrors.email}</p>
+              )}
             </div>
 
             <div>
@@ -145,7 +196,7 @@ const RegisterRequestPage = () => {
                 id="role"
                 name="role"
                 required
-                className="appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                className="appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-raimes-purple focus:border-raimes-purple sm:text-sm bg-white/70"
                 value={formData.role}
                 onChange={handleChange}
               >
@@ -156,6 +207,7 @@ const RegisterRequestPage = () => {
 
             {formData.role === 'user' && (
               <>
+                <h3 className="pt-2 text-xs font-semibold uppercase tracking-wide text-gray-500">Company Details</h3>
                 <div>
                   <label htmlFor="companyname" className="block text-sm font-medium text-gray-700 mb-1">
                     Company Name <span className="text-red-500">*</span>
@@ -165,11 +217,14 @@ const RegisterRequestPage = () => {
                     name="companyname"
                     type="text"
                     required
-                    className="appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                    className={`appearance-none relative block w-full px-3 py-2 border placeholder-gray-500 text-gray-900 rounded-lg focus:outline-none focus:ring-2 sm:text-sm bg-white/70 ${fieldErrors.companyname ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-raimes-purple focus:border-raimes-purple'}`}
                     placeholder="Enter company name"
                     value={formData.companyname}
                     onChange={handleChange}
                   />
+                  {fieldErrors.companyname && (
+                    <p className="mt-1 text-xs text-red-600">{fieldErrors.companyname}</p>
+                  )}
                 </div>
 
                 <div>
@@ -180,7 +235,7 @@ const RegisterRequestPage = () => {
                     id="address"
                     name="address"
                     rows={3}
-                    className="appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                    className="appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-raimes-purple focus:border-raimes-purple sm:text-sm bg-white/70"
                     placeholder="Enter company address (optional)"
                     value={formData.address}
                     onChange={handleChange}
@@ -198,7 +253,7 @@ const RegisterRequestPage = () => {
                 name="password"
                 type="password"
                 required
-                className="appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                className="appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-raimes-purple focus:border-raimes-purple sm:text-sm bg-white/70"
                 placeholder="Enter password (min. 6 characters)"
                 value={formData.password}
                 onChange={handleChange}
@@ -214,7 +269,7 @@ const RegisterRequestPage = () => {
                 name="confirmPassword"
                 type="password"
                 required
-                className="appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                className="appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-raimes-purple focus:border-raimes-purple sm:text-sm bg-white/70"
                 placeholder="Confirm your password"
                 value={formData.confirmPassword}
                 onChange={handleChange}
@@ -226,7 +281,7 @@ const RegisterRequestPage = () => {
             <button
               type="submit"
               disabled={loading}
-              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-lg text-white bg-raimes-purple hover:bg-indigo-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-raimes-purple disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               {loading ? (
                 <span className="flex items-center">
@@ -245,7 +300,7 @@ const RegisterRequestPage = () => {
           <div className="text-center">
             <p className="text-sm text-gray-600">
               Already have an account?{' '}
-              <Link to="/login" className="font-medium text-blue-600 hover:text-blue-500">
+              <Link to="/login" className="font-medium text-raimes-purple hover:opacity-80">
                 Sign in here
               </Link>
             </p>

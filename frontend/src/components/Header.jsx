@@ -6,16 +6,9 @@ import logoFull from "../assets/logo-full.png";
 
 export default function Header({ useRootAnchors = false } = {}) {
   // Variants
-  const staggerChildren = {
-    hidden: {},
-    visible: {
-      transition: { staggerChildren: 0.08 },
-    },
-  };
-
   const fadeIn = {
     hidden: { opacity: 0 },
-    visible: { opacity: 1, transition: { duration: 0.6 } },
+    visible: { opacity: 1, transition: { duration: 0.5 } },
   };
 
   const navLinks = [
@@ -24,63 +17,62 @@ export default function Header({ useRootAnchors = false } = {}) {
   ];
 
   return (
-    <motion.header
-      initial="hidden"
-      animate="visible"
-      variants={staggerChildren}
-      className="px-8 py-4 bg-raimes-purple animate-slideDown"
-    >
-      <div className="flex items-center justify-between">
-        <motion.div variants={fadeIn} className="flex items-center">
-          <Link to="/">
-            <img src={logoFull} alt="RAIMES" className="h-12 animate-fadeIn" />
+    <header className="px-8 py-5 bg-raimes-purple text-white shadow-sm">
+      <div className="max-w-6xl mx-auto flex items-center justify-between">
+        {/* Logo */}
+        <motion.div variants={fadeIn} initial="hidden" animate="visible" className="flex items-center shrink-0">
+          <Link to="/" className="inline-block">
+            <img src={logoFull} alt="RAIMES" className="h-10" />
           </Link>
-          <span className="sr-only">RAIMES</span>
         </motion.div>
-        <nav className="hidden md:flex items-center gap-12 text-white">
-          {navLinks.map((link) => (
-            <motion.div
-              key={link.label}
-              variants={fadeIn}
-              whileHover={{ y: -2 }}
-              transition={{ type: "tween", duration: 0.2 }}
-            >
-              {(() => {
-                const href = link.href.startsWith("#")
-                  ? useRootAnchors
-                    ? `/${link.href}`
-                    : link.href
-                  : link.href;
-                return href.startsWith("#") ? (
+
+        {/* Navigation Links - Center */}
+        <nav className="hidden md:flex items-center gap-8 absolute left-1/2 transform -translate-x-1/2">
+          {navLinks.map((link) => {
+            const href = link.href.startsWith("#")
+              ? useRootAnchors
+                ? `/${link.href}`
+                : link.href
+              : link.href;
+            const isHashLink = href.startsWith("#");
+
+            return (
+              <motion.div
+                key={link.label}
+                variants={fadeIn}
+                initial="hidden"
+                animate="visible"
+              >
+                {isHashLink ? (
                   <a
                     href={href}
-                    className="font-semibold hover:text-raimes-yellow transition-colors"
+                    className="text-white font-medium hover:text-raimes-yellow transition-colors"
                   >
                     {link.label}
                   </a>
                 ) : (
                   <Link
                     to={href}
-                    className="font-semibold hover:text-raimes-yellow transition-colors"
+                    className="text-white font-medium hover:text-raimes-yellow transition-colors"
                   >
                     {link.label}
                   </Link>
-                );
-              })()}
-            </motion.div>
-          ))}
+                )}
+              </motion.div>
+            );
+          })}
         </nav>
-        <motion.div variants={fadeIn}>
-          <motion.div whileHover={{ y: -2 }} whileTap={{ scale: 0.98 }}>
-            <Link
-              to="/login"
-              className="px-6 py-2 bg-raimes-yellow text-blue font-semibold rounded-lg hover:opacity-90 transition-opacity"
-            >
-              Login
-            </Link>
-          </motion.div>
+
+        {/* Login Button - Right */}
+        <motion.div variants={fadeIn} initial="hidden" animate="visible">
+          <Link
+            to="/login"
+            className="px-6 py-2.5 border border-white text-white font-semibold rounded-md hover:bg-white hover:text-raimes-purple transition-all duration-200"
+          >
+            Login
+          </Link>
         </motion.div>
       </div>
-    </motion.header>
+    </header>
   );
 }
