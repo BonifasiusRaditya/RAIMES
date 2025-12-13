@@ -126,7 +126,8 @@ function Dashboard() {
           </p>
         </div>
 
-        <div className="bg-white rounded-lg shadow-md border-l-4 border-raimes-purple p-6 mb-6">
+        <div className="grid lg:grid-cols-2 grid-cols-1 gap-6 mb-8">
+          <div className="bg-white rounded-lg shadow-md border-l-4 border-raimes-purple p-6">
             <h2 className="text-xl font-semibold text-raimes-purple mb-4">
               Assessment Progress
             </h2>
@@ -146,56 +147,57 @@ function Dashboard() {
             </p>
           </div>
 
-        <div className="grid md:grid-cols-2 grid-cols-1 gap-6 mb-8">
-          <a href="/data-validation" className="bg-white rounded-lg shadow-md border-l-4 border-raimes-red p-6 hover:shadow-lg transition-shadow cursor-pointer">
-            <div className="flex items-center">
-              <div className="shrink-0 bg-red-100 rounded-md p-3">
-                <svg
-                  className="h-6 w-6 text-raimes-red"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                  />
-                </svg>
+          <div className="grid lg:grid-cols-2 grid-cols-1 gap-6">
+            <a href="/data-validation" className="bg-white rounded-lg shadow-md border-l-4 border-raimes-red p-6 hover:shadow-lg transition-shadow cursor-pointer">
+              <div className="flex items-center h-full">
+                <div className="shrink-0 bg-red-100 rounded-md p-3">
+                  <svg
+                    className="h-6 w-6 text-raimes-red"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                    />
+                  </svg>
+                </div>
+                <div className="ml-4">
+                  <p className="text-sm font-medium text-gray-600">Validate Questionnaires</p>
+                  <p className="text-2xl font-bold text-gray-900">
+                    {stats.invalidData}
+                  </p>
+                  <p className="text-xs text-gray-500 mt-1">Review & approve answers</p>
+                </div>
               </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Validate Questionnaires</p>
-                <p className="text-2xl font-bold text-gray-900">
-                  {stats.invalidData}
-                </p>
-                <p className="text-xs text-gray-500 mt-1">Review & approve answers</p>
-              </div>
-            </div>
-          </a>
+            </a>
 
-          <div className="bg-white rounded-lg shadow-md border-l-4 border-raimes-yellow p-6">
-            <div className="flex items-center">
-              <div className="shrink-0 bg-yellow-100 rounded-md p-3">
-                <svg
-                  className="h-6 w-6 text-raimes-yellow"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
-                  />
-                </svg>
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Notifications</p>
-                <p className="text-2xl font-bold text-gray-900">
-                  {stats.notifications}
-                </p>
+            <div className="bg-white rounded-lg shadow-md border-l-4 border-raimes-yellow p-6">
+              <div className="flex items-center h-full">
+                <div className="shrink-0 bg-yellow-100 rounded-md p-3">
+                  <svg
+                    className="h-6 w-6 text-raimes-yellow"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
+                    />
+                  </svg>
+                </div>
+                <div className="ml-4">
+                  <p className="text-sm font-medium text-gray-600">Notifications</p>
+                  <p className="text-2xl font-bold text-gray-900">
+                    {stats.notifications}
+                  </p>
+                </div>
               </div>
             </div>
           </div>
