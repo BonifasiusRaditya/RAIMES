@@ -29,7 +29,7 @@ export default function Navbar() {
             ["/dashboard", "Dashboard"],
             ...(user?.role === "user"
               ? [
-                  ["/my-assessments", "My Assessments"],
+                  ["/my-assessments", "Assessments"],
                   ["/results", "Results"],
                   ["/resources", "Resources"],
                 ]

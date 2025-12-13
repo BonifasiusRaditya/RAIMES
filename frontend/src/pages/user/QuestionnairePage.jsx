@@ -736,12 +736,6 @@ function QuestionnairePage() {
               "Complete this assessment to evaluate your company's responsible mining practices"}
           </p>
 
-          {questionnaireId && (
-            <p className="text-sm text-gray-500 mb-2">
-              Questionnaire ID: {questionnaireId}
-            </p>
-          )}
-
           <p className="text-gray-600 mb-8">
             Total Questions: {totalQuestions}
           </p>
@@ -833,70 +827,6 @@ function QuestionnairePage() {
                             <p className="text-gray-900 font-medium text-lg leading-relaxed">
                               {question.text}
                             </p>
-                            <div className="mt-3 flex flex-wrap gap-3 text-xs text-gray-500">
-                              <span className="flex items-center gap-1">
-                                <svg
-                                  className="w-4 h-4"
-                                  fill="currentColor"
-                                  viewBox="0 0 20 20"
-                                >
-                                  <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" />
-                                  <path
-                                    fillRule="evenodd"
-                                    d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z"
-                                    clipRule="evenodd"
-                                  />
-                                </svg>
-                                Type: {question.type}
-                              </span>
-                              <span className="flex items-center gap-1">
-                                <svg
-                                  className="w-4 h-4"
-                                  fill="currentColor"
-                                  viewBox="0 0 20 20"
-                                >
-                                  <path
-                                    fillRule="evenodd"
-                                    d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z"
-                                    clipRule="evenodd"
-                                  />
-                                </svg>
-                                Weight: {question.weight}/10
-                              </span>
-                              <span className="flex items-center gap-1">
-                                {question.require_evidence ? (
-                                  <>
-                                    <svg
-                                      className="w-4 h-4 text-red-500"
-                                      fill="currentColor"
-                                      viewBox="0 0 20 20"
-                                    >
-                                      <path
-                                        fillRule="evenodd"
-                                        d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
-                                        clipRule="evenodd"
-                                      />
-                                    </svg>{" "}
-                                    Evidence Required
-                                  </>
-                                ) : (
-                                  <>
-                                    <svg
-                                      className="w-4 h-4"
-                                      fill="currentColor"
-                                      viewBox="0 0 20 20"
-                                    >
-                                      <path
-                                        fillRule="evenodd"
-                                        d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                                        clipRule="evenodd"
-                                      />
-                                    </svg>{" "}
-                                    Evidence Optional
-                                  </>
-                                )}
-                              </span>
-                            </div>
                           </div>
                           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                             {/* Answer Section */}

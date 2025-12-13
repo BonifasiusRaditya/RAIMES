@@ -8,6 +8,7 @@ export default function MyAssessmentsPage() {
   const [assessmentsByCategory, setAssessmentsByCategory] = useState({});
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("all"); // all, in-progress, completed, pending
+  const [companyName, setCompanyName] = useState("");
 
   useEffect(() => {
     let isMounted = true;
@@ -19,6 +20,16 @@ export default function MyAssessmentsPage() {
         if (isMounted) {
           setAssessmentsByCategory(response || {});
         }
+
+        // Also fetch flat list to derive company name reliably
+        try {
+          const flat = await assessmentService.getMyAssessments();
+          const items = Array.isArray(flat) ? flat : flat?.data;
+          const first = Array.isArray(items) ? items[0] : null;
+          if (isMounted && first?.companyName) {
+            setCompanyName(first.companyName);
+          }
+        } catch {}
       } catch (error) {
         console.error("Error loading assessments:", error);
       } finally {
@@ -98,10 +109,10 @@ export default function MyAssessmentsPage() {
       <div className="max-w-7xl mx-auto px-8 py-12">
         <div className="mb-8">
           <h1 className="text-4xl font-bold text-gray-900 mb-2">
-            My Assessments
+            {`${companyName || Object.values(assessmentsByCategory).flat()[0]?.companyName || "My Company"}'s Assessments`}
           </h1>
           <p className="text-gray-600">
-            Track and manage your mining assessment questionnaires
+            Track and manage your company's mining assessment questionnaires
           </p>
         </div>
 

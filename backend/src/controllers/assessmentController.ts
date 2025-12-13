@@ -1063,11 +1063,13 @@ export const getMyAssessments = async (req: AuthRequest, res: Response): Promise
         a.finalscore,
         q.title AS questionnaire_title,
         q.description AS questionnaire_description,
+        c.companyname AS company_name,
         COUNT(ans.answerid) AS answered_count,
         (SELECT COUNT(*) FROM Question WHERE questionnaireid = a.questionnaireid) AS total_count
       FROM Assessment a
       LEFT JOIN Answer ans ON a.assessmentid = ans.assessmentid
       LEFT JOIN Questionnaire q ON a.questionnaireid = q.questionnaireid
+      JOIN Company c ON a.companyid = c.companyid
       WHERE a.companyid = $1
       GROUP BY 
         a.assessmentid,
@@ -1077,7 +1079,8 @@ export const getMyAssessments = async (req: AuthRequest, res: Response): Promise
         a.completiondate,
         a.finalscore,
         q.title,
-        q.description
+        q.description,
+        c.companyname
       ORDER BY COALESCE(a.completiondate, a.startdate) DESC
     `;
 
@@ -1098,6 +1101,7 @@ export const getMyAssessments = async (req: AuthRequest, res: Response): Promise
         questionnaireId: row.questionnaireid,
         questionnaireTitle: row.questionnaire_title || `Mining Assessment Questionnaire ${row.questionnaireid}`,
         questionnaireDescription: row.questionnaire_description,
+        companyName: row.company_name || null,
         status: row.status,
         startDate: row.startdate,
         completionDate: row.completiondate,

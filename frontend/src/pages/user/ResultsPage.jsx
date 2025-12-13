@@ -353,10 +353,6 @@ export default function ResultsPage() {
                   <p className="text-sm text-gray-500">
                     Completed on {formatDate(result.completedAt)}
                   </p>
-                  <p className="text-xs text-gray-400 mt-1">
-                    Assessment ID: {result.assessmentId} | Questionnaire ID:{" "}
-                    {result.questionnaireId}
-                  </p>
                 </div>
                 <div className="flex items-center gap-3">
                   <div className="text-right">

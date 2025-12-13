@@ -99,8 +99,41 @@ export const assessmentService = {
   // Get assessments grouped by category
   getMyAssessmentsByCategory: async () => {
     try {
-      const response = await api.get("/assessments/my-assessments-by-category");
-      return response.data;
+      // Backend doesn't provide grouped endpoint; fetch flat and group client-side
+      const response = await api.get("/assessments/my-assessments");
+      const list = Array.isArray(response.data) ? response.data : response.data?.data || [];
+
+      // Normalize status keys used in UI
+      const normalizeStatus = (s) => {
+        if (!s) return "not-started";
+        const val = String(s).toLowerCase().replace(/\s+/g, "-");
+        if (val === "in_progress") return "in-progress";
+        return val;
+      };
+
+      // Group by questionnaire title's implied category or explicit `category` if present
+      const grouped = {};
+      for (const a of list) {
+        const category = a.category || (a.questionnaireTitle?.split(":")[0] ?? "General");
+        const item = {
+          id: a.id,
+          title: a.questionnaireTitle || a.title || `Questionnaire ${a.questionnaireId}`,
+          questionnaireId: a.questionnaireId,
+          status: normalizeStatus(a.status),
+          progress: a.progressPercentage ?? a.progress ?? 0,
+          answeredQuestions: a.answeredQuestions ?? 0,
+          totalQuestions: a.totalQuestions ?? 0,
+          score: a.finalScore ?? a.score ?? null,
+          grade: a.grade ?? null,
+          startedAt: a.startDate ?? a.startedAt ?? null,
+          lastUpdated: a.lastUpdated ?? null,
+          completedAt: a.completionDate ?? a.completedAt ?? null,
+          companyName: a.companyName ?? null,
+        };
+        if (!grouped[category]) grouped[category] = [];
+        grouped[category].push(item);
+      }
+      return grouped;
     } catch (error) {
       console.error("Error fetching assessments by category:", error);
       throw error;
