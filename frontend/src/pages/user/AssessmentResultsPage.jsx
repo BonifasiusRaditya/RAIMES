@@ -29,14 +29,18 @@ export default function AssessmentResultsPage() {
         setQuestionEvidence(byQuestion);
       } else {
         setQuestionEvidence({});
-        setEvidenceError(evidenceResponse?.message || "Failed to load evidence");
+        setEvidenceError(
+          evidenceResponse?.message || "Failed to load evidence"
+        );
       }
     } catch (err) {
       console.error("Error fetching evidence:", err);
       const errorMsg =
         typeof err === "string"
           ? err
-          : err.response?.data?.message || err.message || "Failed to load evidence";
+          : err.response?.data?.message ||
+            err.message ||
+            "Failed to load evidence";
       setEvidenceError(errorMsg);
       setQuestionEvidence({});
     } finally {
@@ -48,7 +52,9 @@ export default function AssessmentResultsPage() {
     try {
       setLoading(true);
       setError(null);
-      const response = await assessmentService.getAssessmentDetail(assessmentId);
+      const response = await assessmentService.getAssessmentDetail(
+        assessmentId
+      );
 
       if (response && response.success) {
         const data = response.data || {};
@@ -67,7 +73,9 @@ export default function AssessmentResultsPage() {
         }
 
         const normalizedFinalScore =
-          data.finalScore !== null && data.finalScore !== undefined && !Number.isNaN(Number(data.finalScore))
+          data.finalScore !== null &&
+          data.finalScore !== undefined &&
+          !Number.isNaN(Number(data.finalScore))
             ? Number(data.finalScore)
             : null;
 
@@ -80,7 +88,7 @@ export default function AssessmentResultsPage() {
         // Expand all categories by default
         const categories = Object.keys(response.data.questionsByCategory || {});
         const expanded = {};
-        categories.forEach(cat => expanded[cat] = true);
+        categories.forEach((cat) => (expanded[cat] = true));
         setExpandedCategories(expanded);
         fetchEvidence(assessmentId);
       } else {
@@ -91,7 +99,9 @@ export default function AssessmentResultsPage() {
       const errorMsg =
         typeof err === "string"
           ? err
-          : err.response?.data?.message || err.message || "Failed to load assessment details";
+          : err.response?.data?.message ||
+            err.message ||
+            "Failed to load assessment details";
       setError(errorMsg);
     } finally {
       setLoading(false);
@@ -99,7 +109,8 @@ export default function AssessmentResultsPage() {
   };
 
   const getScoreColor = (score) => {
-    if (score === null || score === undefined || Number.isNaN(score)) return "text-gray-600";
+    if (score === null || score === undefined || Number.isNaN(score))
+      return "text-gray-600";
     if (score >= 90) return "text-green-600";
     if (score >= 80) return "text-blue-600";
     if (score >= 70) return "text-yellow-600";
@@ -139,6 +150,28 @@ export default function AssessmentResultsPage() {
     });
   };
 
+  const getReviewState = (assessmentData) => {
+    const hasReviewerNotes = !!assessmentData?.reviewerNotes;
+    const hasQuestionNotes =
+      assessmentData?.questionReviewerNotes &&
+      Object.keys(assessmentData.questionReviewerNotes || {}).length > 0;
+
+    if (hasReviewerNotes || hasQuestionNotes) {
+      return {
+        label: "Approved by auditor",
+        tone: "bg-green-100 text-green-800 border-green-200",
+        description:
+          "Assessment has been reviewed and approved by the auditor.",
+      };
+    }
+
+    return {
+      label: "Awaiting auditor approval",
+      tone: "bg-yellow-100 text-yellow-800 border-yellow-200",
+      description: "Submitted answers are pending auditor review.",
+    };
+  };
+
   const toggleCategory = (category) => {
     setExpandedCategories((prev) => ({
       ...prev,
@@ -162,14 +195,21 @@ export default function AssessmentResultsPage() {
       doc.setFontSize(20);
       doc.setFont("helvetica", "bold");
       doc.setTextColor(91, 33, 182); // Purple color
-      doc.text("Assessment Results Report", pageWidth / 2, yPosition, { align: "center" });
-      
+      doc.text("Assessment Results Report", pageWidth / 2, yPosition, {
+        align: "center",
+      });
+
       yPosition += 10;
       doc.setFontSize(14);
       doc.setFont("helvetica", "normal");
       doc.setTextColor(0, 0, 0);
-      doc.text(assessment.questionnaireTitle || "Assessment", pageWidth / 2, yPosition, { align: "center" });
-      
+      doc.text(
+        assessment.questionnaireTitle || "Assessment",
+        pageWidth / 2,
+        yPosition,
+        { align: "center" }
+      );
+
       yPosition += 15;
 
       // Assessment Information
@@ -180,11 +220,15 @@ export default function AssessmentResultsPage() {
 
       doc.setFont("helvetica", "normal");
       doc.setFontSize(10);
-      
+
       // Simple text-based info (avoiding autoTable for now)
       doc.text(`Assessment ID: #${assessment.assessmentId}`, 14, yPosition);
       yPosition += 5;
-      doc.text(`Questionnaire ID: #${assessment.questionnaireId}`, 14, yPosition);
+      doc.text(
+        `Questionnaire ID: #${assessment.questionnaireId}`,
+        14,
+        yPosition
+      );
       yPosition += 5;
       doc.text(`Company: ${assessment.companyName}`, 14, yPosition);
       yPosition += 5;
@@ -192,10 +236,20 @@ export default function AssessmentResultsPage() {
       yPosition += 5;
       doc.text(`Started: ${formatDate(assessment.startDate)}`, 14, yPosition);
       yPosition += 5;
-      doc.text(`Completed: ${assessment.completionDate ? formatDate(assessment.completionDate) : 'N/A'}`, 14, yPosition);
+      doc.text(
+        `Completed: ${
+          assessment.completionDate
+            ? formatDate(assessment.completionDate)
+            : "N/A"
+        }`,
+        14,
+        yPosition
+      );
       yPosition += 5;
       const pdfFinalScore =
-        assessment.finalScore !== null && assessment.finalScore !== undefined && !Number.isNaN(assessment.finalScore)
+        assessment.finalScore !== null &&
+        assessment.finalScore !== undefined &&
+        !Number.isNaN(assessment.finalScore)
           ? assessment.finalScore.toFixed(1)
           : "N/A";
       doc.text(`Final Score: ${pdfFinalScore}/100`, 14, yPosition);
@@ -211,16 +265,28 @@ export default function AssessmentResultsPage() {
 
       doc.setFont("helvetica", "normal");
       doc.setFontSize(10);
-      doc.text(`Total Questions: ${assessment.totalQuestions || 0}`, 14, yPosition);
+      doc.text(
+        `Total Questions: ${assessment.totalQuestions || 0}`,
+        14,
+        yPosition
+      );
       yPosition += 5;
-      doc.text(`Questions Answered: ${assessment.answeredQuestions || 0}`, 14, yPosition);
+      doc.text(
+        `Questions Answered: ${assessment.answeredQuestions || 0}`,
+        14,
+        yPosition
+      );
       yPosition += 5;
-      doc.text(`Completion Rate: ${assessment.progressPercentage}%`, 14, yPosition);
+      doc.text(
+        `Completion Rate: ${assessment.progressPercentage}%`,
+        14,
+        yPosition
+      );
       yPosition += 10;
 
       // Questions by Category
       const categories = Object.entries(assessment.questionsByCategory || {});
-      
+
       for (const [category, questions] of categories) {
         // Check if need new page
         if (yPosition > pageHeight - 40) {
@@ -231,7 +297,13 @@ export default function AssessmentResultsPage() {
         doc.setFontSize(12);
         doc.setFont("helvetica", "bold");
         doc.setTextColor(91, 33, 182);
-        doc.text(`${category} (${questions.filter(q => q.answered).length}/${questions.length})`, 14, yPosition);
+        doc.text(
+          `${category} (${questions.filter((q) => q.answered).length}/${
+            questions.length
+          })`,
+          14,
+          yPosition
+        );
         yPosition += 7;
         doc.setTextColor(0, 0, 0);
 
@@ -249,19 +321,22 @@ export default function AssessmentResultsPage() {
 
           doc.setFont("helvetica", "normal");
           doc.setFontSize(9);
-          
+
           if (q.answered) {
             doc.setTextColor(0, 128, 0); // Green
-            const answerText = q.answer || 'No response';
-            const splitAnswer = doc.splitTextToSize(`Answer: ${answerText}`, pageWidth - 28);
+            const answerText = q.answer || "No response";
+            const splitAnswer = doc.splitTextToSize(
+              `Answer: ${answerText}`,
+              pageWidth - 28
+            );
             doc.text(splitAnswer, 18, yPosition);
             yPosition += splitAnswer.length * 5;
           } else {
             doc.setTextColor(255, 0, 0); // Red
-            doc.text('Answer: Not answered', 18, yPosition);
+            doc.text("Answer: Not answered", 18, yPosition);
             yPosition += 5;
           }
-          
+
           doc.setTextColor(0, 0, 0);
           yPosition += 3;
         });
@@ -275,12 +350,9 @@ export default function AssessmentResultsPage() {
         doc.setPage(i);
         doc.setFontSize(8);
         doc.setTextColor(128, 128, 128);
-        doc.text(
-          `Page ${i} of ${pageCount}`,
-          pageWidth / 2,
-          pageHeight - 10,
-          { align: "center" }
-        );
+        doc.text(`Page ${i} of ${pageCount}`, pageWidth / 2, pageHeight - 10, {
+          align: "center",
+        });
         doc.text(
           `Generated on ${new Date().toLocaleDateString()}`,
           pageWidth - 14,
@@ -290,7 +362,11 @@ export default function AssessmentResultsPage() {
       }
 
       // Save PDF
-      const fileName = `Assessment_${assessment.assessmentId}_${assessment.questionnaireTitle?.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`;
+      const fileName = `Assessment_${
+        assessment.assessmentId
+      }_${assessment.questionnaireTitle?.replace(/\s+/g, "_")}_${
+        new Date().toISOString().split("T")[0]
+      }.pdf`;
       doc.save(fileName);
     } catch (error) {
       console.error("Error generating PDF:", error);
@@ -305,7 +381,9 @@ export default function AssessmentResultsPage() {
         <div className="max-w-6xl mx-auto px-8 py-12">
           <div className="flex items-center justify-center h-64">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-raimes-purple"></div>
-            <span className="ml-4 text-gray-600">Loading assessment details...</span>
+            <span className="ml-4 text-gray-600">
+              Loading assessment details...
+            </span>
           </div>
         </div>
       </div>
@@ -360,8 +438,12 @@ export default function AssessmentResultsPage() {
   const totalAnswered = assessment.answeredQuestions || 0;
   const totalQuestions = assessment.totalQuestions || 0;
   const questionNotes = assessment.questionReviewerNotes || {};
-  const hasOverallNotes = Boolean(assessment.reviewerNotes && assessment.reviewerNotes.trim().length > 0);
-  const hasQuestionNotes = Object.values(questionNotes).some((note) => Boolean(note && note.toString().trim().length > 0));
+  const hasOverallNotes = Boolean(
+    assessment.reviewerNotes && assessment.reviewerNotes.trim().length > 0
+  );
+  const hasQuestionNotes = Object.values(questionNotes).some((note) =>
+    Boolean(note && note.toString().trim().length > 0)
+  );
   const hasAnyReviewerNotes = hasOverallNotes || hasQuestionNotes;
   const hasAnyEvidence = Object.values(questionEvidence || {}).some(
     (items) => Array.isArray(items) && items.length > 0
@@ -375,9 +457,7 @@ export default function AssessmentResultsPage() {
   const readQuestionEvidence = (questionId) => {
     if (!questionEvidence) return [];
     return (
-      questionEvidence[questionId] ||
-      questionEvidence[String(questionId)] ||
-      []
+      questionEvidence[questionId] || questionEvidence[String(questionId)] || []
     );
   };
 
@@ -411,7 +491,7 @@ export default function AssessmentResultsPage() {
           <div className="flex justify-between items-start">
             <div>
               <h1 className="text-4xl font-bold text-gray-900 mb-2">
-                {assessment.questionnaireTitle || `Assessment #${assessment.assessmentId}`}
+                {assessment.questionnaireTitle || "Assessment Results"}
               </h1>
               <p className="text-gray-600">
                 {assessment.questionnaireDescription}
@@ -440,12 +520,18 @@ export default function AssessmentResultsPage() {
         </div>
 
         {/* Status & Score Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
           {/* Final Score */}
           <div className="bg-white rounded-lg shadow-sm p-6">
             <div className="text-sm text-gray-500 mb-1">Final Score</div>
-            <div className={`text-3xl font-bold ${getScoreColor(assessment.finalScore)}`}>
-              {assessment.finalScore !== null && assessment.finalScore !== undefined && !Number.isNaN(assessment.finalScore)
+            <div
+              className={`text-3xl font-bold ${getScoreColor(
+                assessment.finalScore
+              )}`}
+            >
+              {assessment.finalScore !== null &&
+              assessment.finalScore !== undefined &&
+              !Number.isNaN(assessment.finalScore)
                 ? assessment.finalScore.toFixed(1)
                 : "N/A"}
             </div>
@@ -455,7 +541,11 @@ export default function AssessmentResultsPage() {
           {/* Status */}
           <div className="bg-white rounded-lg shadow-sm p-6">
             <div className="text-sm text-gray-500 mb-2">Status</div>
-            <span className={`inline-block px-3 py-1 rounded-full text-sm font-semibold border ${getStatusColor(assessment.status)}`}>
+            <span
+              className={`inline-block px-3 py-1 rounded-full text-sm font-semibold border ${getStatusColor(
+                assessment.status
+              )}`}
+            >
               {assessment.status?.replace("_", " ").toUpperCase()}
             </span>
           </div>
@@ -470,53 +560,96 @@ export default function AssessmentResultsPage() {
               {totalAnswered} of {totalQuestions} answered
             </p>
           </div>
+        </div>
 
+        {/* Auditor Review Highlight */}
+        <div className="mb-6">
+          {(() => {
+            const reviewState = getReviewState(assessment);
+            return (
+              <div
+                className={`bg-white rounded-lg shadow p-6 border ${reviewState.tone} flex flex-col gap-2 md:flex-row md:items-center md:justify-between`}
+              >
+                <div>
+                  <p className="text-sm font-semibold">Auditor Review</p>
+                  <p className="text-lg font-bold leading-tight">
+                    {reviewState.label}
+                  </p>
+                  <p className="text-sm text-gray-600 mt-1 leading-snug">
+                    {reviewState.description}
+                  </p>
+                </div>
+                <div className="text-xs text-gray-500 mt-2 md:mt-0">
+                  Status is based on auditor notes and approvals. If pending,
+                  expect follow-up from the auditor.
+                </div>
+              </div>
+            );
+          })()}
+        </div>
+
+        {/* Dates row (less prominent) */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
           {/* Started */}
-          <div className="bg-white rounded-lg shadow-sm p-6">
-            <div className="text-sm text-gray-500 mb-1">Started</div>
-            <div className="text-sm font-semibold">{formatDate(assessment.startDate)}</div>
-            <p className="text-xs text-gray-500 mt-2">{formatTime(assessment.startDate)}</p>
+          <div className="bg-white rounded-lg shadow-sm p-4">
+            <div className="text-xs text-gray-500 mb-1">Started</div>
+            <div className="text-sm font-semibold">
+              {formatDate(assessment.startDate)}
+            </div>
+            <p className="text-xs text-gray-500 mt-1">
+              {formatTime(assessment.startDate)}
+            </p>
           </div>
 
           {/* Completed */}
-          <div className="bg-white rounded-lg shadow-sm p-6">
-            <div className="text-sm text-gray-500 mb-1">Completed</div>
+          <div className="bg-white rounded-lg shadow-sm p-4">
+            <div className="text-xs text-gray-500 mb-1">Completed</div>
             <div className="text-sm font-semibold">
-              {assessment.completionDate ? formatDate(assessment.completionDate) : "N/A"}
+              {assessment.completionDate
+                ? formatDate(assessment.completionDate)
+                : "N/A"}
             </div>
-            <p className="text-xs text-gray-500 mt-2">
-              {assessment.completionDate ? formatTime(assessment.completionDate) : "N/A"}
+            <p className="text-xs text-gray-500 mt-1">
+              {assessment.completionDate
+                ? formatTime(assessment.completionDate)
+                : "N/A"}
             </p>
           </div>
         </div>
 
-        {/* Assessment Info */}
+        {/* Assessment Info (user-relevant only) */}
         <div className="bg-white rounded-lg shadow-sm p-6 mb-8">
-          <h2 className="text-lg font-bold text-gray-900 mb-4">Assessment Information</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div>
-              <span className="text-sm text-gray-500">Assessment ID</span>
-              <div className="font-semibold text-gray-900">#{assessment.assessmentId}</div>
-            </div>
-            <div>
-              <span className="text-sm text-gray-500">Questionnaire ID</span>
-              <div className="font-semibold text-gray-900">#{assessment.questionnaireId}</div>
-            </div>
+          <h2 className="text-lg font-bold text-gray-900 mb-4">
+            Assessment Information
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <span className="text-sm text-gray-500">Company</span>
-              <div className="font-semibold text-gray-900">{assessment.companyName}</div>
+              <div className="font-semibold text-gray-900">
+                {assessment.companyName}
+              </div>
+            </div>
+            <div>
+              <span className="text-sm text-gray-500">Questionnaire</span>
+              <div className="font-semibold text-gray-900">
+                {assessment.questionnaireTitle || "Mining Assessment"}
+              </div>
             </div>
           </div>
         </div>
 
         {/* Reviewer Notes */}
         <div className="bg-white rounded-lg shadow-sm p-6 mb-8">
-          <h2 className="text-lg font-bold text-gray-900 mb-3">Reviewer Feedback</h2>
+          <h2 className="text-lg font-bold text-gray-900 mb-3">
+            Reviewer Feedback
+          </h2>
           {hasAnyReviewerNotes ? (
             <div className="space-y-4">
               {hasOverallNotes && (
                 <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
-                  <p className="text-sm font-semibold text-raimes-purple mb-1">Overall Notes</p>
+                  <p className="text-sm font-semibold text-raimes-purple mb-1">
+                    Overall Notes
+                  </p>
                   <p className="text-sm text-gray-800 whitespace-pre-wrap">
                     {assessment.reviewerNotes.trim()}
                   </p>
@@ -524,16 +657,20 @@ export default function AssessmentResultsPage() {
               )}
               {hasQuestionNotes && (
                 <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-                  <p className="text-sm font-semibold text-gray-800 mb-2">Question-Specific Notes</p>
+                  <p className="text-sm font-semibold text-gray-800 mb-2">
+                    Question-Specific Notes
+                  </p>
                   <p className="text-xs text-gray-600">
-                    Detailed notes are displayed alongside each relevant question below.
+                    Detailed notes are displayed alongside each relevant
+                    question below.
                   </p>
                 </div>
               )}
             </div>
           ) : (
             <div className="bg-gray-50 border border-dashed border-gray-300 rounded-lg p-4 text-sm text-gray-600">
-              No reviewer feedback available yet. You will see notes here once an auditor completes the review.
+              No reviewer feedback available yet. You will see notes here once
+              an auditor completes the review.
             </div>
           )}
         </div>
@@ -560,7 +697,10 @@ export default function AssessmentResultsPage() {
         <div className="space-y-4">
           {categories.length > 0 ? (
             categories.map(([category, questions]) => (
-              <div key={category} className="bg-white rounded-lg shadow-sm overflow-hidden">
+              <div
+                key={category}
+                className="bg-white rounded-lg shadow-sm overflow-hidden"
+              >
                 {/* Category Header */}
                 <button
                   onClick={() => toggleCategory(category)}
@@ -569,7 +709,8 @@ export default function AssessmentResultsPage() {
                   <div className="flex items-center gap-3">
                     <span className="font-bold text-lg">{category}</span>
                     <span className="bg-white bg-opacity-20 px-3 py-1 rounded-full text-sm">
-                      {questions.filter((q) => q.answered).length}/{questions.length}
+                      {questions.filter((q) => q.answered).length}/
+                      {questions.length}
                     </span>
                   </div>
                   <svg
@@ -593,113 +734,143 @@ export default function AssessmentResultsPage() {
                 {expandedCategories[category] && (
                   <div className="p-6 space-y-6 border-t border-gray-200">
                     {questions.map((question, idx) => {
-                      const evidenceList = readQuestionEvidence(question.questionId);
-                      const hasEvidenceForQuestion = Array.isArray(evidenceList) && evidenceList.length > 0;
-                      const questionNote = readQuestionNote(question.questionId);
+                      const evidenceList = readQuestionEvidence(
+                        question.questionId
+                      );
+                      const hasEvidenceForQuestion =
+                        Array.isArray(evidenceList) && evidenceList.length > 0;
+                      const questionNote = readQuestionNote(
+                        question.questionId
+                      );
                       const trimmedNote = questionNote?.toString().trim();
 
                       return (
-                        <div key={question.questionId} className="border-l-4 border-raimes-purple pl-4 pb-4 last:pb-0 last:border-l-0">
-                        <div className="flex justify-between items-start mb-2">
-                          <div className="flex-1">
-                            <h4 className="font-semibold text-gray-900">
-                              {idx + 1}. {question.questionText}
-                            </h4>
-                            <div className="flex gap-2 mt-2 flex-wrap">
-                              {question.questionType && (
-                                <span className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded">
-                                  Type: {question.questionType}
-                                </span>
-                              )}
-                              {question.weight && (
-                                <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">
-                                  Weight: {question.weight}
-                                </span>
-                              )}
-                              {question.evidenceRequired && (
-                                <span className="text-xs bg-orange-100 text-orange-700 px-2 py-1 rounded">
-                                  Evidence Required
-                                </span>
-                              )}
-                              {question.answered ? (
-                                <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded">
-                                  Answered
-                                </span>
-                              ) : (
-                                <span className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded">
-                                  Not Answered
-                                </span>
-                              )}
+                        <div
+                          key={question.questionId}
+                          className="border-l-4 border-raimes-purple pl-4 pb-4 last:pb-0 last:border-l-0"
+                        >
+                          <div className="flex justify-between items-start mb-2">
+                            <div className="flex-1">
+                              <h4 className="font-semibold text-gray-900">
+                                {idx + 1}. {question.questionText}
+                              </h4>
+                              <div className="flex gap-2 mt-2 flex-wrap">
+                                {question.questionType && (
+                                  <span className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded">
+                                    Type: {question.questionType}
+                                  </span>
+                                )}
+                                {question.weight && (
+                                  <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">
+                                    Weight: {question.weight}
+                                  </span>
+                                )}
+                                {question.evidenceRequired && (
+                                  <span className="text-xs bg-orange-100 text-orange-700 px-2 py-1 rounded">
+                                    Evidence Required
+                                  </span>
+                                )}
+                                {question.answered ? (
+                                  <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded">
+                                    Answered
+                                  </span>
+                                ) : (
+                                  <span className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded">
+                                    Not Answered
+                                  </span>
+                                )}
+                              </div>
                             </div>
                           </div>
-                        </div>
 
-                        {question.answered ? (
-                          <div className="mt-3 space-y-3">
-                            {question.options && (
+                          {question.answered ? (
+                            <div className="mt-3 space-y-3">
+                              {question.options && (
+                                <div>
+                                  <p className="text-xs text-gray-500 mb-1">
+                                    Options:
+                                  </p>
+                                  <p className="text-xs text-gray-600 bg-gray-50 p-2 rounded">
+                                    {Array.isArray(question.options)
+                                      ? question.options.join(", ")
+                                      : typeof question.options === "string"
+                                      ? question.options
+                                      : JSON.stringify(question.options)}
+                                  </p>
+                                </div>
+                              )}
                               <div>
-                                <p className="text-xs text-gray-500 mb-1">Options:</p>
-                                <p className="text-xs text-gray-600 bg-gray-50 p-2 rounded">
-                                  {Array.isArray(question.options)
-                                    ? question.options.join(", ")
-                                    : typeof question.options === "string"
-                                    ? question.options
-                                    : JSON.stringify(question.options)}
+                                <p className="text-xs text-gray-500 mb-1">
+                                  Answer:
                                 </p>
-                              </div>
-                            )}
-                            <div>
-                              <p className="text-xs text-gray-500 mb-1">Answer:</p>
-                              <div className="bg-green-50 border-l-4 border-green-500 p-3 rounded">
-                                <p className="text-gray-900 text-sm">{question.answer || "No response"}</p>
-                              </div>
-                            </div>
-                            {trimmedNote && (
-                              <div>
-                                <p className="text-xs text-gray-500 mb-1">Reviewer Note:</p>
-                                <div className="bg-purple-50 border-l-4 border-raimes-purple p-3 rounded">
-                                  <p className="text-sm text-gray-800 whitespace-pre-wrap">{trimmedNote}</p>
+                                <div className="bg-green-50 border-l-4 border-green-500 p-3 rounded">
+                                  <p className="text-gray-900 text-sm">
+                                    {question.answer || "No response"}
+                                  </p>
                                 </div>
                               </div>
-                            )}
-                          </div>
-                        ) : (
-                          <div className="mt-3 bg-gray-50 border border-dashed border-gray-300 p-3 rounded">
-                            <p className="text-sm text-gray-500 italic">Not answered</p>
-                          </div>
-                        )}
+                              {trimmedNote && (
+                                <div>
+                                  <p className="text-xs text-gray-500 mb-1">
+                                    Reviewer Note:
+                                  </p>
+                                  <div className="bg-purple-50 border-l-4 border-raimes-purple p-3 rounded">
+                                    <p className="text-sm text-gray-800 whitespace-pre-wrap">
+                                      {trimmedNote}
+                                    </p>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          ) : (
+                            <div className="mt-3 bg-gray-50 border border-dashed border-gray-300 p-3 rounded">
+                              <p className="text-sm text-gray-500 italic">
+                                Not answered
+                              </p>
+                            </div>
+                          )}
 
-                        {(hasEvidenceForQuestion || (!evidenceLoading && question.evidenceRequired)) && (
-                          <div className="mt-3">
-                            <p className="text-xs text-gray-500 mb-1">Evidence Files:</p>
-                            {evidenceLoading ? (
-                              <div className="bg-gray-50 border border-gray-200 rounded p-3 text-sm text-gray-500">
-                                Loading evidence...
-                              </div>
-                            ) : hasEvidenceForQuestion ? (
-                              <div className="space-y-2">
-                                {evidenceList.map((file) => (
-                                  <a
-                                    key={file.id}
-                                    href={file.url}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="flex items-center justify-between bg-white border border-gray-200 rounded-lg px-3 py-2 shadow-sm hover:border-raimes-purple hover:text-raimes-purple transition-colors"
-                                  >
-                                    <span className="text-sm font-medium truncate pr-3">{file.filename}</span>
-                                    <span className="text-xs text-gray-500">
-                                      {file.uploadedAt ? new Date(file.uploadedAt).toLocaleDateString() : ""}
-                                    </span>
-                                  </a>
-                                ))}
-                              </div>
-                            ) : (
-                              <div className="bg-gray-50 border border-dashed border-gray-300 rounded p-3 text-sm text-gray-500">
-                                No evidence uploaded for this question.
-                              </div>
-                            )}
-                          </div>
-                        )}
+                          {(hasEvidenceForQuestion ||
+                            (!evidenceLoading &&
+                              question.evidenceRequired)) && (
+                            <div className="mt-3">
+                              <p className="text-xs text-gray-500 mb-1">
+                                Evidence Files:
+                              </p>
+                              {evidenceLoading ? (
+                                <div className="bg-gray-50 border border-gray-200 rounded p-3 text-sm text-gray-500">
+                                  Loading evidence...
+                                </div>
+                              ) : hasEvidenceForQuestion ? (
+                                <div className="space-y-2">
+                                  {evidenceList.map((file) => (
+                                    <a
+                                      key={file.id}
+                                      href={file.url}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="flex items-center justify-between bg-white border border-gray-200 rounded-lg px-3 py-2 shadow-sm hover:border-raimes-purple hover:text-raimes-purple transition-colors"
+                                    >
+                                      <span className="text-sm font-medium truncate pr-3">
+                                        {file.filename}
+                                      </span>
+                                      <span className="text-xs text-gray-500">
+                                        {file.uploadedAt
+                                          ? new Date(
+                                              file.uploadedAt
+                                            ).toLocaleDateString()
+                                          : ""}
+                                      </span>
+                                    </a>
+                                  ))}
+                                </div>
+                              ) : (
+                                <div className="bg-gray-50 border border-dashed border-gray-300 rounded p-3 text-sm text-gray-500">
+                                  No evidence uploaded for this question.
+                                </div>
+                              )}
+                            </div>
+                          )}
                         </div>
                       );
                     })}
@@ -720,15 +891,21 @@ export default function AssessmentResultsPage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
               <p className="text-sm text-gray-600 mb-1">Total Questions</p>
-              <p className="text-3xl font-bold text-blue-600">{totalQuestions}</p>
+              <p className="text-3xl font-bold text-blue-600">
+                {totalQuestions}
+              </p>
             </div>
             <div className="p-4 bg-green-50 rounded-lg border border-green-200">
               <p className="text-sm text-gray-600 mb-1">Questions Answered</p>
-              <p className="text-3xl font-bold text-green-600">{totalAnswered}</p>
+              <p className="text-3xl font-bold text-green-600">
+                {totalAnswered}
+              </p>
             </div>
             <div className="p-4 bg-purple-50 rounded-lg border border-purple-200">
               <p className="text-sm text-gray-600 mb-1">Completion Rate</p>
-              <p className="text-3xl font-bold text-raimes-purple">{assessment.progressPercentage}%</p>
+              <p className="text-3xl font-bold text-raimes-purple">
+                {assessment.progressPercentage}%
+              </p>
             </div>
           </div>
         </div>

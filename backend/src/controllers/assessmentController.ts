@@ -467,7 +467,8 @@ export const uploadEvidence = async (req: AuthRequest, res: Response): Promise<v
     }
 
     const storedFilename = file.filename;
-    const relativePath = path.join('uploads', 'evidence', storedFilename);
+    // Use posix path to keep forward slashes in DB regardless of OS
+    const relativePath = path.posix.join('uploads', 'evidence', storedFilename);
     const insertEvidenceQuery = `
       INSERT INTO Evidence (answerid, filename, originalname, filetype, storagepath, uploaderid)
       VALUES ($1, $2, $3, $4, $5, $6)
@@ -586,7 +587,8 @@ export const getEvidenceForAssessment = async (req: AuthRequest, res: Response):
 
     const evidence = evidenceResult.rows.map((row: any) => {
       const storedFilename = row.filename || path.basename(row.storagepath || '');
-      const relativePath = row.storagepath || path.join('uploads', 'evidence', storedFilename);
+      const relativePathRaw = row.storagepath || path.posix.join('uploads', 'evidence', storedFilename);
+      const relativePath = relativePathRaw.replace(/\\/g, '/');
       const publicUrl = `${req.protocol}://${req.get('host')}/uploads/evidence/${storedFilename}`;
 
       return {
@@ -684,10 +686,11 @@ export const deleteEvidence = async (req: AuthRequest, res: Response): Promise<v
     }
 
     const storedFilename = evidenceRow.filename || path.basename(evidenceRow.storagepath || '');
-    const relativePath = evidenceRow.storagepath || path.join('uploads', 'evidence', storedFilename);
-    const absolutePath = path.isAbsolute(relativePath)
-      ? relativePath
-      : path.resolve(process.cwd(), relativePath);
+    const relativePathRaw = evidenceRow.storagepath || path.posix.join('uploads', 'evidence', storedFilename);
+    const normalizedRelativePath = relativePathRaw.replace(/\\/g, '/');
+    const absolutePath = path.isAbsolute(normalizedRelativePath)
+      ? normalizedRelativePath
+      : path.resolve(process.cwd(), normalizedRelativePath);
 
     await pool.query('DELETE FROM Evidence WHERE evidenceid = $1', [evidenceIdNum]);
 
