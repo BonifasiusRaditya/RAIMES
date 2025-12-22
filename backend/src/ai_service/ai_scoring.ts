@@ -263,33 +263,47 @@ export const callAIEngine = async (
 
     const result = await response.json();
     console.log('✅ AI Engine response received:', JSON.stringify(result, null, 2));
-    console.log('🔍 Checking analysis field:', {
-      hasAnalysis: 'analysis' in result,
-      analysisType: typeof result.analysis,
-      analysisLength: result.analysis?.length || 0,
-      analysisPreview: result.analysis?.substring(0, 100)
-    });
-
-    // Extract score and analysis from response
-    if (result && typeof result.score === 'number') {
-      console.log('✅ Returning AI response with:', {
-        score: result.score,
-        hasAnalysis: !!result.analysis,
-        analysisLength: result.analysis?.length || 0
-      });
-      
-      return {
-        success: true,
-        score: result.score,
-        analysis: result.analysis || null, // Add analysis field
-        evaluation_date: result.evaluation_date,
-        score_details: result.score_details,
+    // Type guard: cek jika result adalah object dan punya property yang diharapkan
+    if (typeof result === 'object' && result !== null) {
+      const r = result as {
+        score?: number;
+        analysis?: string;
+        evaluation_date?: string;
+        score_details?: any;
       };
+      console.log('🔍 Checking analysis field:', {
+        hasAnalysis: 'analysis' in r,
+        analysisType: typeof r.analysis,
+        analysisLength: r.analysis?.length || 0,
+        analysisPreview: r.analysis?.substring(0, 100)
+      });
+
+      // Extract score and analysis from response
+      if (typeof r.score === 'number') {
+        console.log('✅ Returning AI response with:', {
+          score: r.score,
+          hasAnalysis: !!r.analysis,
+          analysisLength: r.analysis?.length || 0
+        });
+        return {
+          success: true,
+          score: r.score,
+          analysis: r.analysis || '', // Always return string
+          evaluation_date: r.evaluation_date || '', // Always return string
+          score_details: r.score_details,
+        };
+      } else {
+        console.error('Invalid AI Engine response format:', result);
+        return {
+          success: false,
+          error: 'Invalid response format from AI Engine',
+        };
+      }
     } else {
-      console.error('Invalid AI Engine response format:', result);
+      console.error('Invalid AI Engine response type:', result);
       return {
         success: false,
-        error: 'Invalid response format from AI Engine',
+        error: 'Invalid AI Engine response type',
       };
     }
   } catch (error) {
